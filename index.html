@@ -580,7 +580,10 @@ function drawMap(){
 /* ================= canvas helpers ================= */
 function setupCanvas(cv){
   const dpr=window.devicePixelRatio||1;
-  const w=cv.clientWidth,h=+cv.getAttribute('height');
+  /* cache the intended CSS height once: cv.height IS the height attribute,
+     so re-reading it after scaling by dpr would double the canvas each redraw */
+  if(!cv.dataset.baseh)cv.dataset.baseh=cv.getAttribute('height');
+  const w=cv.clientWidth,h=+cv.dataset.baseh;
   cv.width=w*dpr;cv.height=h*dpr;cv.style.height=h+'px';
   const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
   return {ctx,w,h};
