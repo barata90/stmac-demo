@@ -44,6 +44,15 @@ h1 .thin{color:var(--muted);font-weight:400}
 .badge.contrast{border-style:dashed;color:var(--faint)}
 .badge.contrast b{color:var(--pt);font-size:12.5px;font-weight:500}
 
+/* ---------- guide ---------- */
+details.guide{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 20px}
+details.guide summary{cursor:pointer;font-family:var(--disp);font-weight:600;font-size:15px;color:var(--solar);list-style:none;display:flex;align-items:center;gap:10px}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide summary::before{content:'\25b8';transition:transform .15s;color:var(--faint)}
+details.guide[open] summary::before{transform:rotate(90deg)}
+details.guide .g-body{margin-top:13px;color:var(--muted);font-size:13.5px;line-height:1.55;display:grid;gap:9px;max-width:105ch}
+details.guide .g-body b{color:var(--ink)}
+details.guide .g-body .num{font-family:var(--mono);color:var(--solar);margin-right:6px}
 /* ---------- layout ---------- */
 main{padding:22px 0 10px;display:grid;gap:18px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
@@ -130,20 +139,33 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
   No GPU, no training data, no learned weights — and the default dataset is 70 days of the <b>real 1999
   Saudi NLR record</b>, embedded in this very page. The solve-time badge below <em>is</em> the paper's thesis.</p>
   <div class="console-strip">
-    <div class="badge solve"><span class="dot"></span>Last solve <b id="bSolve">—</b></div>
-    <div class="badge">Trained parameters <b>0</b></div>
-    <div class="badge">Iterations <b>4</b></div>
-    <div class="badge">Mask patterns cached <b id="bPat">—</b></div>
-    <div class="badge contrast">Transformer baseline needs&nbsp;<b>136,000 params · 25 epochs · retrain on every topology change</b></div>
+    <div class="badge solve" title="Wall-clock time for the full STMAC reconstruction of the current scenario, measured live in your browser"><span class="dot"></span>Last solve <b id="bSolve">—</b></div>
+    <div class="badge" title="STMAC learns nothing in advance: no training set, no learned weights, no GPU — the paper’s central claim">Trained parameters <b>0</b></div>
+    <div class="badge" title="Alternating Tikhonov passes (Algorithm 1): a temporal solve per station, then a spatial solve per timestamp">Iterations <b>4</b></div>
+    <div class="badge" title="Distinct outage patterns across timestamps: each 11×11 factorisation is computed once and reused — the pattern-grouped caching of Algorithm 1">Mask patterns cached <b id="bPat">—</b></div>
+    <div class="badge contrast" title="The deep-learning baseline of Section V-C: needs curated training data, 25 epochs, and retraining whenever the sensor network changes">Transformer baseline needs&nbsp;<b>136,000 params · 25 epochs · retrain on every topology change</b></div>
   </div>
 </div></header>
 
 <main class="wrap">
 
+  <details class="guide">
+    <summary>New here? How to read this console — 60 seconds</summary>
+    <div class="g-body">
+      <div><span class="num">1.</span><b>The map</b> shows 11 real sensors that measured sunlight across Saudi Arabia through 1999. Lines join neighbouring stations that lend each other information during repair — thicker line, stronger coupling.</div>
+      <div><span class="num">2.</span><b>Break the network</b> deletes data on purpose, imitating how sensors really fail (comms loss, maintenance, calibration drift): in contiguous blocks, not random specks. “Block length” is how long each blackout lasts — the paper’s key stress test.</div>
+      <div><span class="num">3.</span><b>The reconstruction chart</b>: amber is what the sensor truly measured; the shaded band is what we deleted; rose is the conventional repair (each station smoothing its own history); teal is STMAC. The closer teal hugs amber inside the band, the better the repair.</div>
+      <div><span class="num">4.</span><b>The error cards</b> average the mistake, in W/m², over deleted daytime cells only — smaller is better. “Advantage” is how many times smaller STMAC’s error is than the conventional one for the exact scenario you just built.</div>
+      <div><span class="num">5.</span><b>The sweep</b> is the paper’s headline in one picture: as blackouts stretch from 30 minutes to 7 days, the conventional error explodes while STMAC’s stays flat — because neighbours can supply the missing days, but a station’s own past cannot.</div>
+      <div><span class="num">6.</span><b>The Vision 2030 panel</b> turns those errors into money: what forecast-error penalties would cost a 40+ GW solar fleet per year, and how much STMAC avoids. The tornado shows which assumption moves that answer most — and it is not STMAC’s tuning.</div>
+      <div><span class="num">7.</span><b>The badges up top</b> are the thesis: zero trained parameters, solved in milliseconds, inside your browser. The deep-learning baseline needs 136,000 trained parameters to do this job — and does it slightly worse on long gaps.</div>
+    </div>
+  </details>
+
   <section class="row-top">
     <div class="panel">
       <h2>Saudi NLR sensor network</h2>
-      <p class="cap">11 ground stations, k = 3 nearest-neighbour graph (σ = 300 km Gaussian weights). Click a station to inspect its reconstruction.</p>
+      <p class="cap">11 ground stations, k = 3 nearest-neighbour graph (σ = 300 km Gaussian weights). Edges join neighbours that lend information during reconstruction — thicker = stronger coupling. Click a station to inspect its repair.</p>
       <svg id="map" viewBox="0 0 640 500" role="img" aria-label="Map of the 11-station Saudi sensor network"></svg>
       <div class="map-legend">
         <span class="key"><span class="k-node"></span>station</span>
@@ -219,7 +241,7 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
         <tr><td>7 day</td><td>4,442</td><td>275</td><td>209</td><td class="win">208</td></tr>
         <tr><td>growth</td><td>64×</td><td>1.79×</td><td>1.05×</td><td class="win">1.06×</td></tr>
       </table>
-      <p class="ref-cap">STMAC matches or beats the trained Transformer at every block ≥ 6 h — with zero training.</p>
+      <p class="ref-cap">Teal marks where STMAC wins the row. It matches or beats the trained Transformer at every block ≥ 6 h — with zero training.</p>
     </div>
 
     <div class="panel">
@@ -267,7 +289,7 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
       <div>
         <div class="bars-lbl">Tornado sensitivity (paper base case, $92.2M)</div>
         <canvas id="tornado" height="270"></canvas>
-        <p class="ref-cap">Method RMSE is the <em>smallest</em> driver — the savings claim is robust to STMAC tuning; uncertainty lives in market parameters.</p>
+        <p class="ref-cap">Each bar: how far annual savings swing when that one input sweeps its plausible range, others held at base. Method RMSE is the <em>smallest</em> driver — the savings claim is robust to STMAC tuning; the real uncertainty lives in market parameters.</p>
       </div>
     </div>
   </section>
