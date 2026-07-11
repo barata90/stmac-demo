@@ -183,7 +183,7 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
     <div class="chart-head">
       <div>
         <h2 id="chartTitle">Reconstruction — station</h2>
-        <p class="cap" id="chartSub">Window centred on an injected outage. Shaded band = data removed from this station.</p>
+        <p class="cap" id="chartSub">Window centred on an injected outage; shaded band = data removed from this station. Amber = ground truth, rose = pure temporal (goes flat across long gaps), teal = STMAC rebuilding each diurnal cycle from neighbouring stations.</p>
       </div>
       <div class="gap-nav">
         <button class="btn" id="prevGap" aria-label="Previous gap">◀</button>
@@ -202,7 +202,7 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
   <section class="row-metrics">
     <div class="panel">
       <h2>Live error — this outage scenario</h2>
-      <p class="cap">RMSE on removed daytime cells only (W/m²), exactly as in the paper.</p>
+      <p class="cap">RMSE on removed daytime cells only (W/m²), exactly as in the paper — <b>lower is better</b>. The advantage card is pure-temporal error ÷ STMAC-longitude error for this exact scenario.</p>
       <div class="cards">
         <div class="card pt"><div class="lab">Pure temporal</div><div class="val" id="cPT">—<span class="un"> W/m²</span></div></div>
         <div class="card stl"><div class="lab">STMAC · longitude sheaf</div><div class="val" id="cSTL">—<span class="un"> W/m²</span></div></div>
@@ -224,8 +224,9 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
 
     <div class="panel">
       <h2>Block-length sweep — the headline figure, live</h2>
-      <p class="cap">Reproduces the shape of Fig. 1: hold outage fraction, sweep block length 30 min → 7 days. Log scale.</p>
+      <p class="cap">Reproduces the shape of Fig. 1: hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: left of the crossover a station’s own history suffices; right of it, gaps span whole diurnal cycles that no smoothness prior can invent — only neighbouring stations, glued by the sheaf, can supply them.</p>
       <canvas id="sweepChart" height="330"></canvas>
+      <div class="series-legend" id="sweepLegend"></div>
       <div class="status" id="sweepStatus"></div>
     </div>
   </section>
@@ -614,7 +615,7 @@ function drawTS(){
   const gl=g1-g0;
   const pad=Math.max(Math.round(gl*0.7),SPD>>1);
   const a=Math.max(0,g0-pad),b=Math.min(T,g1+pad);
-  const L=54,R=12,Tp=14,B=30;
+  const L=64,R=12,Tp=14,B=30;
   const pw=w-L-R,ph=h-Tp-B;
   let ymax=100;
   for(let i=a;i<b;i++){ymax=Math.max(ymax,DATA.U[v][i],state.res.STL[v][i],Math.min(state.res.PT[v][i],2000));}
@@ -625,9 +626,11 @@ function drawTS(){
   // grid + y labels
   ctx.font='10.5px "IBM Plex Mono",monospace';ctx.fillStyle=C.faint;ctx.strokeStyle=C.line;ctx.lineWidth=1;
   const yt=niceTicks(0,ymax,5);
+  ctx.textAlign='right';
   for(const t of yt){ctx.beginPath();ctx.moveTo(L,Y(t));ctx.lineTo(w-R,Y(t));ctx.globalAlpha=.6;ctx.stroke();ctx.globalAlpha=1;
-    ctx.fillText(String(Math.round(t)),6,Y(t)+3);}
-  ctx.save();ctx.translate(14,Tp+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('GHI (W/m²)',0,0);ctx.restore();
+    ctx.fillText(String(Math.round(t)),L-10,Y(t)+3);}
+  ctx.textAlign='left';
+  ctx.save();ctx.translate(16,Tp+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('GHI (W/m²)',0,0);ctx.restore();
   // day ticks
   ctx.textAlign='center';
   const dayStep=Math.max(1,Math.round((b-a)/SPD/6));
@@ -739,7 +742,12 @@ function runSweep(){
   function step(){
     if(k>=BLOCKS.length){
       state.sweep=rows;drawSweep();
-      st.textContent='done — '+(BLOCKS.length*3)+' solver runs. Same shape as Fig. 1: pure temporal collapses, STMAC stays flat.';
+      const f=rows[0],g=rows[rows.length-1];
+      let xo='6–12 h';
+      for(const r of rows){if(r.sl<r.pt){xo=r.lab;break;}}
+      st.textContent='done — '+(BLOCKS.length*3)+' solver runs. From 30-min to 7-day blocks, pure-temporal error grew ×'
+        +(g.pt/f.pt).toFixed(0)+' while STMAC grew ×'+(g.sl/f.sl).toFixed(1)
+        +'. Crossover at '+xo+': beyond it a station’s own history cannot supply whole missing diurnal cycles — only its neighbours, glued by the sheaf, can.';
       btn.disabled=false;state.busy=false;return;
     }
     const bl=BLOCKS[k];
@@ -759,7 +767,7 @@ function drawSweep(partial){
   const rows=partial||state.sweep;if(!rows||!rows.length)return;
   const cv=document.getElementById('sweepChart');
   const {ctx,w,h}=setupCanvas(cv);
-  const L=54,R=14,Tp=16,B=34;const pw=w-L-R,ph=h-Tp-B;
+  const L=74,R=14,Tp=16,B=34;const pw=w-L-R,ph=h-Tp-B;
   let lo=1e9,hi=0;
   for(const r of rows){lo=Math.min(lo,r.pt,r.sl,r.st);hi=Math.max(hi,r.pt,r.sl,r.st);}
   lo=Math.max(1,lo*0.7);hi*=1.4;
@@ -767,13 +775,15 @@ function drawSweep(partial){
   const X=i=>L+(i+0.5)/BLOCKS.length*pw;
   ctx.clearRect(0,0,w,h);
   ctx.font='10.5px "IBM Plex Mono",monospace';ctx.fillStyle=C.faint;
+  ctx.textAlign='right';
   for(const t of [3,10,30,100,300,1000,3000]){
     if(t<lo||t>hi)continue;
     ctx.strokeStyle=C.line;ctx.globalAlpha=.6;ctx.beginPath();ctx.moveTo(L,Y(t));ctx.lineTo(w-R,Y(t));ctx.stroke();ctx.globalAlpha=1;
-    ctx.fillText(String(t),8,Y(t)+3);
+    ctx.fillText(String(t),L-10,Y(t)+3);
   }
-  ctx.save();ctx.translate(14,Tp+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
-  ctx.fillText('RMSE, removed daytime cells (W/m², log)',0,0);ctx.restore();
+  ctx.textAlign='left';
+  ctx.save();ctx.translate(18,Tp+ph/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
+  ctx.fillText('RMSE (W/m², log scale)',0,0);ctx.restore();ctx.textAlign='left';
   ctx.textAlign='center';
   for(let i=0;i<BLOCKS.length;i++)ctx.fillText(BLOCKS[i].lab.replace(' ',''),X(i),h-12);
   ctx.textAlign='left';
@@ -868,6 +878,21 @@ function drawTornado(){
   ctx.fillStyle=C.stmac;ctx.fillText('base $'+b0.toFixed(0)+'M',Math.min(X(b0)+5,w-80),h-4);
 }
 
+function buildSweepLegend(){
+  const el=document.getElementById('sweepLegend');el.innerHTML='';
+  const items=[
+    ['Pure temporal — per-station smoothing, no spatial info',C.pt,'dash'],
+    ['STMAC · trivial sheaf — graph coupling, no time alignment',C.triv,'dot'],
+    ['STMAC · longitude sheaf — proposed, solar-time aligned',C.stmac,'solid']];
+  for(const [lab,col,styl] of items){
+    const s=document.createElement('span');s.className='sl';s.style.cursor='default';
+    const bg=styl==='solid'?col:styl==='dash'
+      ?'repeating-linear-gradient(90deg,'+col+' 0 6px,transparent 6px 10px)'
+      :'repeating-linear-gradient(90deg,'+col+' 0 3px,transparent 3px 6px)';
+    s.innerHTML='<span class="sw" style="background:'+bg+'"></span>'+lab;
+    el.appendChild(s);
+  }
+}
 /* ================= wiring ================= */
 function buildDsChips(){
   const el=document.getElementById('dsChips');el.innerHTML='';
@@ -930,7 +955,7 @@ let rsz;window.addEventListener('resize',()=>{clearTimeout(rsz);
 
 /* ================= boot ================= */
 loadDataset('real');
-drawMap();buildDsChips();buildChips();drawLegend();updateChartHead();
+drawMap();buildDsChips();buildChips();drawLegend();buildSweepLegend();updateChartHead();
 runScenario();
 </script>
 </body>
