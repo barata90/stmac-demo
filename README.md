@@ -55,6 +55,14 @@ from the data itself. Values are quantised to integer W/m². If redistribution t
 of the underlying dataset require it, replace the embedded payload with the built-in
 synthetic mode (toggle in the UI) before public hosting.
 
+## Analysis notebooks
+
+The full experimental pipeline (data download and QC, graph construction, the STMAC
+solver, the block-length sweep of Table I, the Transformer baseline, the persistence
+exploration, and the Vision 2030 economics) is published under
+[`notebooks/`](notebooks/), with outputs preserved from the runs that produced the
+paper's numbers. See `notebooks/README.md` for the pipeline map and data availability.
+
 ## Run / deploy
 
 - **Locally:** open `index.html` in any modern browser. No build, no dependencies.
