@@ -129,6 +129,86 @@ table.ref td.win{color:var(--stmac);font-weight:600}
 footer{border-top:1px solid var(--line);margin-top:26px;padding:24px 0 44px;color:var(--faint);font-size:12.5px}
 footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px}
 </style>
+<style id="premium">
+/* ---- atmosphere ---- */
+body{background-image:
+  radial-gradient(1200px 600px at 88% -12%,rgba(255,182,72,.09),transparent 60%),
+  radial-gradient(1000px 700px at -12% 112%,rgba(70,213,189,.07),transparent 55%),
+  radial-gradient(800px 500px at 50% 120%,rgba(90,110,200,.05),transparent 60%);}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.16;z-index:9999;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.5'/></svg>");}
+::selection{background:rgba(255,182,72,.28)}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#2b3757;border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#3a4a75}
+
+/* ---- header masthead ---- */
+header{position:relative}
+header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,rgba(255,182,72,.55),rgba(70,213,189,.3) 45%,transparent 85%)}
+h1{letter-spacing:-.025em;text-shadow:0 2px 30px rgba(255,182,72,.12)}
+.badge{background:linear-gradient(180deg,#1c2544,#161e38);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 24px -14px rgba(0,0,0,.6);
+  transition:border-color .2s, transform .2s}
+.badge:hover{border-color:var(--line2);transform:translateY(-1px)}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 6px var(--stmac)}50%{box-shadow:0 0 16px var(--stmac),0 0 30px rgba(70,213,189,.4)}}
+.badge .dot{animation:pulseDot 2.4s ease-in-out infinite}
+
+/* ---- panels: material depth ---- */
+.panel{background:linear-gradient(180deg,#1a2340 0%,#161e37 100%);border-color:#2b3757;border-radius:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 24px 48px -28px rgba(0,0,0,.55)}
+.panel h2{font-size:17px;letter-spacing:-.01em}
+.panel h2::before{content:'';display:block;width:30px;height:2px;border-radius:2px;margin-bottom:10px;
+  background:linear-gradient(90deg,var(--solar),rgba(255,182,72,0))}
+details.guide{background:linear-gradient(180deg,#1a2340,#161e37);border-color:#2b3757;border-radius:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 24px 48px -28px rgba(0,0,0,.55)}
+details.guide summary:hover{color:#ffc670}
+
+/* ---- metric cards ---- */
+.card{background:linear-gradient(180deg,#1e2848,#19223f);border-color:#2e3a5e;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-2px);border-color:#3a4a75}
+.card .val{font-variant-numeric:tabular-nums}
+.card.pt .val{text-shadow:0 0 22px rgba(229,100,122,.35)}
+.card.stl .val{text-shadow:0 0 22px rgba(70,213,189,.4)}
+.card.adv{background:linear-gradient(180deg,rgba(70,213,189,.10),rgba(70,213,189,.03))}
+.headline-save .num{background:linear-gradient(115deg,#ffe0a3 0%,#ffb648 55%,#ff9d2e 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  font-variant-numeric:tabular-nums;filter:drop-shadow(0 4px 22px rgba(255,182,72,.28))}
+.badge b,.slider-val{font-variant-numeric:tabular-nums}
+
+/* ---- controls ---- */
+.chip{transition:all .18s cubic-bezier(.2,.7,.3,1)}
+.chip:hover{transform:translateY(-1px)}
+.chip.on{box-shadow:0 0 0 1px rgba(255,182,72,.3),0 6px 20px -8px rgba(255,182,72,.45)}
+.btn{transition:all .18s cubic-bezier(.2,.7,.3,1)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px -10px rgba(0,0,0,.55)}
+.btn.primary:hover{box-shadow:0 8px 26px -8px rgba(70,213,189,.45)}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--solar),#5a4520 65%,#2b3450)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  margin-top:-6px;background:#ffcf7d;border:2px solid #0f1626;
+  box-shadow:0 0 0 3px rgba(255,182,72,.25),0 2px 10px rgba(255,182,72,.5);cursor:pointer}
+input[type=range]::-moz-range-track{height:4px;border-radius:3px;background:#2b3450}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#ffcf7d;
+  border:2px solid #0f1626;box-shadow:0 0 0 3px rgba(255,182,72,.25);cursor:pointer}
+
+/* ---- interpretation callouts ---- */
+.interp{margin-top:14px;padding:12px 15px;border-left:3px solid var(--solar);border-radius:0 10px 10px 0;
+  background:linear-gradient(180deg,rgba(255,182,72,.08),rgba(255,182,72,.02));
+  font-size:13px;line-height:1.62;color:var(--muted)}
+.interp b{color:var(--ink);font-variant-numeric:tabular-nums}
+.interp .hl{color:var(--stmac);font-weight:600}
+
+/* ---- table & footer ---- */
+table.ref tr{transition:background .15s}
+table.ref tr:hover{background:rgba(255,255,255,.025)}
+table.ref td.win{text-shadow:0 0 14px rgba(70,213,189,.4)}
+footer{border-top:1px solid transparent;
+  border-image:linear-gradient(90deg,transparent,#3a4a75 30%,#3a4a75 70%,transparent) 1}
+</style>
 </head>
 <body>
 <header><div class="wrap">
@@ -231,7 +311,8 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
         <div class="card stt"><div class="lab">STMAC · trivial sheaf</div><div class="val" id="cSTT">—<span class="un"> W/m²</span></div></div>
         <div class="card adv"><div class="lab">STMAC advantage</div><div class="val" id="cAdv">—<span class="un">×</span></div></div>
       </div>
-      <div class="bars-lbl">Paper benchmark · real 1999 NLR record (Table I)</div>
+      <div class="interp" id="liveInterp">—</div>
+      <div class="bars-lbl" style="margin-top:14px">Paper benchmark · real 1999 NLR record (Table I)</div>
       <table class="ref">
         <tr><th>Block</th><th>Pure temp.</th><th>Transformer</th><th>STMAC triv.</th><th>STMAC long.</th></tr>
         <tr><td>30 min</td><td>69</td><td>154</td><td>200</td><td>197</td></tr>
@@ -281,6 +362,7 @@ footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bo
           <div class="num" id="saveNum">$—M</div>
           <div class="lbl">avoided losses per year, STMAC vs pure-temporal baseline</div>
         </div>
+        <div class="interp" id="econInterp">—</div>
       </div>
       <div>
         <div class="bars-lbl">Annual balancing cost by method</div>
@@ -672,6 +754,7 @@ function drawTS(){
     ctx.beginPath();ctx.moveTo(X(Math.min(s1,b)),Tp);ctx.lineTo(X(Math.min(s1,b)),Tp+ph);ctx.stroke();
     ctx.setLineDash([]);
   }
+  ctx.lineJoin='round';ctx.lineCap='round';
   const step=Math.max(1,Math.ceil((b-a)/1600));
   function line(arr,color,lw,dash){
     ctx.strokeStyle=color;ctx.lineWidth=lw;if(dash)ctx.setLineDash(dash);
@@ -685,6 +768,7 @@ function drawTS(){
   line(DATA.U[v],C.solar,1.7);
   if(state.showPT)line(state.res.PT[v],C.pt,1.4,[6,4]);
   if(state.showTriv)line(state.res.STT[v],C.triv,1.2,[2,3]);
+  line(state.res.STL[v],'rgba(70,213,189,0.16)',6.5);
   line(state.res.STL[v],C.stmac,2.1);
   document.getElementById('gapLbl').textContent='gap '+(gaps.length?state.gapIdx+1:0)+'/'+gaps.length;
 }
@@ -713,6 +797,24 @@ function drawLegend(){
   }
 }
 
+/* ================= metric animation ================= */
+const raf=(typeof window!=='undefined'&&window.requestAnimationFrame)
+  ? window.requestAnimationFrame.bind(window)
+  : (f)=>setTimeout(()=>f(performance.now()),16);
+const reduceMotion=(typeof window!=='undefined'&&window.matchMedia)
+  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+function animateMetric(id,val,unit,dec){
+  const el=document.getElementById(id);
+  const from=parseFloat(el.dataset.v||'0')||0;
+  el.dataset.v=String(val);
+  if(reduceMotion){el.innerHTML=val.toFixed(dec)+'<span class="un">'+unit+'</span>';return;}
+  const t0=performance.now(),dur=650;
+  (function tick(now){
+    const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);
+    el.innerHTML=(from+(val-from)*e).toFixed(dec)+'<span class="un">'+unit+'</span>';
+    if(p<1)raf(tick);
+  })(t0);
+}
 /* ================= run pipeline ================= */
 function fmtMs(ms){return ms<1000?Math.round(ms)+' ms':(ms/1000).toFixed(2)+' s';}
 function runScenario(cb){
@@ -738,16 +840,43 @@ function runScenario(cb){
     document.getElementById('bPat').textContent=res.patterns;
     document.getElementById('effLine').textContent='effective missing: '+(100*frac).toFixed(1)+'% per station ('+
       Math.max(1,Math.ceil(state.frac*T/blk))+' block'+(Math.ceil(state.frac*T/blk)>1?'s':'')+' × '+BLOCKS[state.blockIdx].lab+')';
-    document.getElementById('cPT').innerHTML=Math.round(res.rPT)+'<span class="un"> W/m²</span>';
-    document.getElementById('cSTL').innerHTML=Math.round(res.rSTL)+'<span class="un"> W/m²</span>';
-    document.getElementById('cSTT').innerHTML=Math.round(res.rSTT)+'<span class="un"> W/m²</span>';
-    document.getElementById('cAdv').innerHTML=(res.rPT/res.rSTL).toFixed(1)+'<span class="un">×</span>';
+    animateMetric('cPT',Math.round(res.rPT),' W/m²',0);
+    animateMetric('cSTL',Math.round(res.rSTL),' W/m²',0);
+    animateMetric('cSTT',Math.round(res.rSTT),' W/m²',0);
+    animateMetric('cAdv',res.rPT/res.rSTL,'×',1);
     st.textContent='solved. STMAC (longitude sheaf) reconstruction: '+fmtMs(tSolve)+' for '+N+'×'+T.toLocaleString()+' cells — zero training.';
     state.gapIdx=0;
-    updateChartHead();drawTS();updateEcon();
+    updateChartHead();drawTS();updateInterp();updateEcon();
     state.busy=false;
     if(cb)cb();
   },30);
+}
+function updateInterp(){
+  const el=document.getElementById('liveInterp');
+  if(!state.res||!el)return;
+  const r=state.res,bl=BLOCKS[state.blockIdx];
+  const hours=bl.s*5/60,cycles=hours/24,ratio=r.rPT/r.rSTL,gain=r.rSTT-r.rSTL;
+  let s;
+  if(hours<6){
+    s='At <b>'+bl.lab+'</b> blocks the gap is far shorter than one diurnal cycle, so a station\u2019s own recent history is highly informative \u2014 pure-temporal smoothing is competitive ('
+      +'<b>'+Math.round(r.rPT)+'</b> vs <b>'+Math.round(r.rSTL)+' W/m\u00b2</b>'
+      +(ratio<1?') and even wins here. This matches the paper: <span class="hl">STMAC\u2019s advantage begins at the \u2248 6 h crossover</span> \u2014 push the block length up to see it.':').');
+  }else if(hours<24){
+    s='A <b>'+bl.lab+'</b> block removes a large share of a diurnal cycle. Temporal smoothing starts flattening into a straight bridge across the gap, while STMAC pulls the true shape from neighbouring stations \u2014 <span class="hl">'+ratio.toFixed(1)+'\u00d7 lower error</span> in this run (<b>'+Math.round(r.rSTL)+'</b> vs <b>'+Math.round(r.rPT)+' W/m\u00b2</b>).';
+  }else{
+    s='A <b>'+bl.lab+'</b> outage swallows <b>'+Math.round(cycles)+'</b> full diurnal cycle'+(cycles>=2?'s':'')+'. No smoothness prior can invent '+Math.round(cycles)+' missing sunrise\u2013noon\u2013sunset arcs, so pure temporal collapses to <b>'+Math.round(r.rPT)+' W/m\u00b2</b>; STMAC rebuilds them from the neighbour graph at <b>'+Math.round(r.rSTL)+' W/m\u00b2</b> \u2014 <span class="hl">'+ratio.toFixed(1)+'\u00d7 better</span>.';
+  }
+  if(gain>0.5){
+    s+=' The longitude sheaf beats the trivial sheaf by <b>'+gain.toFixed(0)+' W/m\u00b2</b> here: aligning stations to solar time before coupling removes the systematic east\u2013west phase error.';
+  }else if(gain>=-0.5){
+    s+=' Trivial and longitude sheaves land within <b>'+Math.abs(gain).toFixed(1)+' W/m\u00b2</b> of each other in this draw \u2014 on a network only \u224840 solar-minutes wide the alignment gain is real but modest, exactly as the paper reports (2\u20134 W/m\u00b2).';
+  }else{
+    s+=' In this particular draw the trivial sheaf edges the longitude sheaf by <b>'+Math.abs(gain).toFixed(1)+' W/m\u00b2</b> \u2014 individual outage draws vary; across the full sweep the solar-time-aligned sheaf wins on average. Try \u201cNew outage draw\u201d.';
+  }
+  if(state.frac>=0.12){
+    s+=' At <b>'+Math.round(state.frac*100)+'%</b> outage the distinct mask patterns multiply (<b>'+r.patterns+'</b> cached factorisations) yet the solve stays in milliseconds \u2014 pattern-grouped caching at work.';
+  }
+  el.innerHTML=s;
 }
 function updateChartHead(){
   const s=STATIONS[state.sel];
@@ -809,6 +938,14 @@ function drawSweep(partial){
   ctx.textAlign='center';
   for(let i=0;i<BLOCKS.length;i++)ctx.fillText(BLOCKS[i].lab.replace(' ',''),X(i),h-12);
   ctx.textAlign='left';
+  ctx.lineJoin='round';ctx.lineCap='round';
+  if(rows.length>1){
+    const grad=ctx.createLinearGradient(0,Tp,0,Tp+ph);
+    grad.addColorStop(0,'rgba(70,213,189,0.15)');grad.addColorStop(1,'rgba(70,213,189,0)');
+    ctx.fillStyle=grad;ctx.beginPath();
+    rows.forEach((r,i)=>{const x=X(i),y=Y(r.sl);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.lineTo(X(rows.length-1),Tp+ph);ctx.lineTo(X(0),Tp+ph);ctx.closePath();ctx.fill();
+  }
   function curve(get,color,lw,dash){
     ctx.strokeStyle=color;ctx.lineWidth=lw;if(dash)ctx.setLineDash(dash);
     ctx.beginPath();
@@ -847,6 +984,12 @@ function updateEcon(){
   const base=methods[0],best=methods[methods.length-1];
   const save=(cost(gw,base.R,pen,out)-cost(gw,best.R,pen,out))/1e6;
   document.getElementById('saveNum').textContent='$'+(save>=100?save.toFixed(0):save.toFixed(1))+'M';
+  const ei=document.getElementById('econInterp');
+  if(ei){
+    const cPT=cost(gw,base.R,pen,out)/1e6,cST=cost(gw,best.R,pen,out)/1e6;
+    const perDollar=(gw*1000*((base.R-best.R)/1000)*out*4380)/1e6;
+    ei.innerHTML='At <b>'+gw+' GW</b> deployed and <b>$'+pen+'/MWh</b> penalties with <b>'+Math.round(out*100)+'%</b> sensor outage, the conventional pipeline burns <b>$'+ (cPT>=100?cPT.toFixed(0):cPT.toFixed(1)) +'M/yr</b> in avoidable imbalance cost; STMAC cuts this to <b>$'+ (cST>=100?cST.toFixed(0):cST.toFixed(1)) +'M/yr</b>. Each extra <b>$1/MWh</b> of penalty raises the annual value of accurate reconstruction by \u2248 <span class="hl">$'+perDollar.toFixed(1)+'M</span>.';
+  }
   // bars
   const cv=document.getElementById('costChart');
   const {ctx,w,h}=setupCanvas(cv);
