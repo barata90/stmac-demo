@@ -128,6 +128,7 @@ table.ref td.win{color:var(--stmac);font-weight:600}
 /* ---------- footer ---------- */
 footer{border-top:1px solid var(--line);margin-top:26px;padding:24px 0 44px;color:var(--faint);font-size:12.5px}
 footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px}
+.chip-lab{font-size:.78rem;opacity:.75;margin-right:6px;align-self:center}
 </style>
 <style id="premium">
 /* ---- atmosphere ---- */
@@ -222,7 +223,7 @@ footer{border-top:1px solid transparent;
     <div class="badge solve" title="Wall-clock time for the full STMAC reconstruction of the current scenario, measured live in your browser"><span class="dot"></span>Last solve <b id="bSolve">—</b></div>
     <div class="badge" title="STMAC learns nothing in advance: no training set, no learned weights, no GPU — the paper’s central claim">Trained parameters <b>0</b></div>
     <div class="badge" title="The two scalar weights of Eq. (5), chosen once by block cross-validation on observed cells — never on the withheld values">Weights <b>r = 1000 · γ = 3</b></div>
-    <div class="badge" title="Conjugate-gradient iterations used to solve the sparse system of Eq. (6) for the current scenario">CG iterations <b id="bPat">—</b></div>
+    <div class="badge" title="Number of unobserved cells in the current scenario; they are the unknowns of the sparse system of Eq. (6), solved exactly by one banded Cholesky factorisation">Unknown cells solved <b id="bPat">—</b></div>
     <div class="badge contrast" title="The deep-learning baseline of Section V-C: needs curated training data, 25 epochs, and retraining whenever the sensor network changes">Transformer baseline needs&nbsp;<b>136,000 params · 25 epochs · retrain on every topology change</b></div>
   </div>
 </div></header>
@@ -264,6 +265,11 @@ footer{border-top:1px solid transparent;
       <div class="ctl-group">
         <div class="ctl-label">Block length</div>
         <div class="chips" id="blockChips"></div>
+      </div>
+      <div class="ctl-group">
+        <div class="ctl-label">Weights (paper: r = 1000, γ = 3, chosen by block cross-validation) — explore beyond the paper</div>
+        <div class="chips" id="rChips"></div>
+        <div class="chips" id="gChips" style="margin-top:6px"></div>
       </div>
       <div class="ctl-group">
         <div class="ctl-label">Target outage fraction per station</div>
@@ -354,8 +360,8 @@ footer{border-top:1px solid transparent;
         <div class="ctl-group">
           <div class="ctl-label">RMSE source</div>
           <div class="src-toggle">
-            <button class="chip on" id="srcPaper">Paper (real NLR, 3-day blocks)</button>
-            <button class="chip" id="srcLive">This live run</button>
+            <button class="chip" id="srcPaper">Paper Table I (full year, 3-day blocks)</button>
+            <button class="chip on" id="srcLive">This live run (updates with every simulation)</button>
           </div>
         </div>
         <div class="headline-save">
@@ -377,12 +383,25 @@ footer{border-top:1px solid transparent;
 
 </main>
 
+<section class="wrap" id="glossary" style="margin-top:28px">
+  <div class="bars-lbl">Glossary for non-specialists</div>
+  <div class="steps">
+    <div><span class="num">·</span><b>Irradiance (GHI, W/m²)</b> — sunlight power landing on one square metre of horizontal ground. Roughly 0 at night, 900–1000 at midday in this winter window, up to 1100+ in summer.</div>
+    <div><span class="num">·</span><b>Block outage</b> — a sensor stops reporting for a continuous stretch (30 minutes to 7 days), as happens with communication failures or maintenance. Harder than scattered missing points, because whole sunrise-to-sunset arcs vanish.</div>
+    <div><span class="num">·</span><b>RMSE</b> — root-mean-square error: the typical size of the mistake, in W/m², measured only on the deleted daytime cells. Lower is better; the paper's tables use the same definition.</div>
+    <div><span class="num">·</span><b>Pure temporal</b> — repair a station using only its own history, by smoothing. Excellent for minutes-long gaps, useless for gaps longer than a day.</div>
+    <div><span class="num">·</span><b>Station climatology (MDV)</b> — the station's usual value at that time of day over the surrounding ±15 days. A strong, simple baseline for long gaps; any smarter method must beat it.</div>
+    <div><span class="num">·</span><b>Sheaf, longitude sheaf</b> — a rule for how neighbouring stations are allowed to inform each other. The longitude sheaf first shifts every station into its own solar time, so that noon at one station is compared with noon at its neighbour.</div>
+    <div><span class="num">·</span><b>STMAC</b> — the paper's method: take the departure from the climatology, ask that it be smooth in time and consistent with neighbours in solar time, and solve that as one sparse linear system. No training set, no fitted model.</div>
+    <div><span class="num">·</span><b>r and γ</b> — the only two knobs. r says how much temporal smoothness counts relative to neighbour agreement; γ says how strongly long gaps are pulled back toward the climatology. The paper selects them once by hiding 5% of the observed data and picking the pair that predicts it best.</div>
+  </div>
+</section>
 <footer><div class="wrap">
   <div class="cite">A. Barata, “Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
   Framework for Saudi Vision 2030,” submitted to IEEE SUSTAIN 2026, KFUPM, Saudi Arabia.</div>
   <div>Everything on this page — the diurnal climatology, the sheaf-Laplacian spatial coupling, the longitude
-  time-shift restriction maps and the conjugate-gradient solve of the sparse space-time system — runs client-side
-  in JavaScript, and reproduces the Python reference to within 2×10⁻⁵ W/m² on the same mask.
+  time-shift restriction maps and the exact banded-Cholesky solve of the sparse space-time system — runs client-side
+  in JavaScript, and reproduces the Python reference to within 10⁻¹⁰ W/m² on the same mask.
   That is the point: a method with no training loop can live anywhere, including inside this page.
   Supports UN SDG 7 · 9 · 13. Source code and the complete analysis notebooks: <a href="https://github.com/barata90/stmac-demo">github.com/barata90/stmac-demo</a>.</div>
 </div></footer>
@@ -434,7 +453,8 @@ const BLOCKS=[{lab:'30 min',s:6},{lab:'2 h',s:24},{lab:'6 h',s:72},{lab:'12 h',s
 const AT=10.0;                    /* smoothing weight of the pure-temporal baseline */
 /* STMAC weights: ratio r and ridge g, selected once by block cross-validation
    on observed cells of the full 1999 record (Section IV-D of the paper) */
-const R_RATIO=1000, RIDGE=3, MDV_WIN=15, CG_TOL=1e-5, CG_MAX=400;
+const R_RATIO=1000, RIDGE=3, MDV_WIN=15;
+const R_CHOICES=[10,100,1000,10000], G_CHOICES=[0,0.3,1,3,10];
 /* Paper, Table I, 3-day blocks, full-year means over 20 mask realisations (W/m2) */
 const PAPER={pt:1904, tf:251, mdv:166, stmac:163};
 
@@ -592,38 +612,18 @@ function ltO(i,n){return (i===0||i===n-2)?-2:-4;}   /* entry (i,i+1) */
 function sparseLg(Lg){
   const idx=[],val=[];
   for(let v=0;v<N;v++){const ii=[],vv=[];
-    for(let w=0;w<N;w++)if(Lg[v][w]!==0){ii.push(w);vv.push(Lg[v][w]);}
+    for(let w=0;w<N;w++)if(w!==v&&Lg[v][w]!==0){ii.push(w);vv.push(Lg[v][w]);}
     idx.push(ii);val.push(vv);}
   return {idx,val};
 }
-/* ---- K x = r (I⊗L_t) x + (L_g⊗I) x + g x, restricted to unobserved cells ---- */
-function applyK(X,Y,SPG,r,g,Mm){
-  for(let v=0;v<N;v++){
-    const x=X[v],y=Y[v];
-    for(let i=0;i<T;i++){
-      let s=ltD(i,T)*x[i];
-      if(i>0)s+=ltO(i-1,T)*x[i-1];
-      if(i<T-1)s+=ltO(i,T)*x[i+1];
-      if(i>1)s+=x[i-2];
-      if(i<T-2)s+=x[i+2];
-      y[i]=r*s;
-    }
-  }
-  for(let v=0;v<N;v++){
-    const idx=SPG.idx[v],val=SPG.val[v],y=Y[v],nn=idx.length;
-    for(let q=0;q<nn;q++){const xw=X[idx[q]],c=val[q];
-      for(let i=0;i<T;i++)y[i]+=c*xw[i];}
-  }
-  for(let v=0;v<N;v++){
-    const y=Y[v],x=X[v],m=Mm[v];
-    for(let i=0;i<T;i++){if(m[i]>0.5)y[i]=0;else y[i]+=g*x[i];}
-  }
-}
-/* ---- STMAC: joint space-time solve on departures from the station climatology ---- */
-function stmacJoint(Z,M,Lg,r,g,useShift,halfWin,tol,maxIt){
+/* ---- STMAC: one exact sparse solve on departures from the station climatology.
+   Unknowns are the unobserved cells ordered by (time, station); with that ordering the
+   system K_mm x = -K_mo z_o (Eq. 6 of the paper) is banded with half-bandwidth < 2N,
+   so a banded Cholesky factorisation solves it exactly in O(n * bandwidth^2). ---- */
+function stmacJoint(Z,M,Lg,r,g,useShift,halfWin){
   const del=STATIONS.map(s=>Math.round((s.lon/15-TZ)*12));
   const C=mdvPrior(Z,M,halfWin);
-  const A0=[],Mm=[],tmp=new Float64Array(T);
+  const A0=[],Mm=[];
   for(let v=0;v<N;v++){
     const a=new Float64Array(T),mf=new Float64Array(T);
     for(let i=0;i<T;i++){a[i]=(M[v][i]>0.5)?(Z[v][i]-C[v][i]):0;mf[i]=M[v][i];}
@@ -633,48 +633,88 @@ function stmacJoint(Z,M,Lg,r,g,useShift,halfWin,tol,maxIt){
       A0.push(as);Mm.push(ms);
     }else{A0.push(a);Mm.push(mf);}
   }
-  const X=[],R=[],Zp=[],P=[],AP=[],DI=[];
-  for(let v=0;v<N;v++){
-    X.push(new Float64Array(T));R.push(new Float64Array(T));Zp.push(new Float64Array(T));
-    P.push(new Float64Array(T));AP.push(new Float64Array(T));
-    const d=new Float64Array(T);
-    for(let i=0;i<T;i++)d[i]=(Mm[v][i]>0.5)?1:(r*ltD(i,T)+Lg[v][v]+g);
-    DI.push(d);
-  }
   const SPG=sparseLg(Lg);
-  applyK(A0,R,SPG,r,g,Mm);
-  let bn=0;
-  for(let v=0;v<N;v++)for(let i=0;i<T;i++){R[v][i]=-R[v][i];bn+=R[v][i]*R[v][i];}
-  bn=Math.sqrt(bn);
-  let rz=0;
-  for(let v=0;v<N;v++)for(let i=0;i<T;i++){Zp[v][i]=R[v][i]/DI[v][i];P[v][i]=Zp[v][i];rz+=R[v][i]*Zp[v][i];}
-  let it=0;
-  if(bn>0){
-    for(;it<maxIt;it++){
-      applyK(P,AP,SPG,r,g,Mm);
-      let pap=0;
-      for(let v=0;v<N;v++)for(let i=0;i<T;i++)pap+=P[v][i]*AP[v][i];
-      if(pap<=0)break;
-      const al=rz/pap;
-      let rn=0;
-      for(let v=0;v<N;v++)for(let i=0;i<T;i++){X[v][i]+=al*P[v][i];R[v][i]-=al*AP[v][i];rn+=R[v][i]*R[v][i];}
-      if(Math.sqrt(rn)<=tol*bn){it++;break;}
-      let rz2=0;
-      for(let v=0;v<N;v++)for(let i=0;i<T;i++){Zp[v][i]=R[v][i]/DI[v][i];rz2+=R[v][i]*Zp[v][i];}
-      const be=rz2/rz;rz=rz2;
-      for(let v=0;v<N;v++)for(let i=0;i<T;i++)P[v][i]=Zp[v][i]+be*P[v][i];
+  /* index the unknowns */
+  const idx=new Int32Array(N*T).fill(-1);
+  const cellT=[],cellV=[];
+  let n=0;
+  for(let t=0;t<T;t++)for(let v=0;v<N;v++)if(Mm[v][t]<=0.5){idx[t*N+v]=n++;cellT.push(t);cellV.push(v);}
+  if(n===0){
+    const Rec=[];for(let v=0;v<N;v++){const o=new Float64Array(T);for(let i=0;i<T;i++)o[i]=Z[v][i];Rec.push(o);}
+    return {R:Rec,C:C,n:0,bw:0};
+  }
+  /* bandwidth */
+  let bw=0;
+  for(let k=0;k<n;k++){
+    const t=cellT[k],v=cellV[k];
+    for(let dt=1;dt<=2;dt++){if(t-dt>=0){const j=idx[(t-dt)*N+v];if(j>=0&&k-j>bw)bw=k-j;}}
+    const nb=SPG.idx[v];
+    for(let q=0;q<nb.length;q++){const j=idx[t*N+nb[q]];if(j>=0&&j<k&&k-j>bw)bw=k-j;}
+  }
+  const W=bw+1;
+  const AB=new Float64Array(n*W),b=new Float64Array(n);
+  /* assemble lower band and right-hand side */
+  for(let k=0;k<n;k++){
+    const t=cellT[k],v=cellV[k];
+    AB[k*W]=r*ltD(t,T)+Lg[v][v]+g;
+    for(let dt=-2;dt<=2;dt++){
+      if(dt===0)continue;
+      const t2=t+dt;if(t2<0||t2>=T)continue;
+      const c=(Math.abs(dt)===1)?r*ltO(Math.min(t,t2),T):r;
+      const j=idx[t2*N+v];
+      if(j>=0){if(j<k)AB[k*W+(k-j)]=c;}
+      else b[k]-=c*A0[v][t2];
+    }
+    const nb=SPG.idx[v],nv=SPG.val[v];
+    for(let q=0;q<nb.length;q++){
+      const w=nb[q],c=nv[q],j=idx[t*N+w];
+      if(j>=0){if(j<k)AB[k*W+(k-j)]=c;}
+      else b[k]-=c*A0[w][t];
     }
   }
-  const Rec=[];
+  /* banded Cholesky, in place: AB becomes L */
+  for(let j=0;j<n;j++){
+    const jW=j*W,kmin=Math.max(0,j-bw);
+    let s=AB[jW];
+    for(let k=kmin;k<j;k++){const l=AB[jW+(j-k)];s-=l*l;}
+    if(s<=0)s=1e-12;
+    const d=Math.sqrt(s);AB[jW]=d;
+    const imax=Math.min(n-1,j+bw);
+    for(let i=j+1;i<=imax;i++){
+      const iW=i*W;
+      let s2=AB[iW+(i-j)];
+      const k0=Math.max(kmin,i-bw);
+      for(let k=k0;k<j;k++)s2-=AB[iW+(i-k)]*AB[jW+(j-k)];
+      AB[iW+(i-j)]=s2/d;
+    }
+  }
+  /* forward: L y = b */
+  const y=new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const iW=i*W;let s=b[i];
+    const k0=Math.max(0,i-bw);
+    for(let k=k0;k<i;k++)s-=AB[iW+(i-k)]*y[k];
+    y[i]=s/AB[iW];
+  }
+  /* backward: L' x = y */
+  const x=new Float64Array(n);
+  for(let i=n-1;i>=0;i--){
+    let s=y[i];
+    const imax=Math.min(n-1,i+bw);
+    for(let k=i+1;k<=imax;k++)s-=AB[k*W+(k-i)]*x[k];
+    x[i]=s/AB[i*W];
+  }
+  /* assemble the reconstruction */
+  const Rec=[],tmp=new Float64Array(T);
   for(let v=0;v<N;v++){
-    for(let i=0;i<T;i++)tmp[i]=A0[v][i]+X[v][i];
+    for(let i=0;i<T;i++){const k=idx[i*N+v];tmp[i]=(k>=0)?x[k]:A0[v][i];}
     const back=new Float64Array(T);
     if(useShift)shiftInt(tmp,del[v],back);else back.set(tmp);
     const o=new Float64Array(T);
     for(let i=0;i<T;i++)o[i]=back[i]+C[v][i];
     Rec.push(o);
   }
-  return {R:Rec,C:C,iters:it};
+  return {R:Rec,C:C,n:n,bw:bw};
 }
 
 function rmseMasked(truth,CS,rec,M){
@@ -694,7 +734,8 @@ const C={solar:css.getPropertyValue('--solar').trim(),stmac:css.getPropertyValue
   mdv:'#7fc97f'};
 
 const state={seed:42,maskSeed:11,blockIdx:5,frac:0.10,sel:0,gapIdx:0,dataset:'real',
-  showTriv:false,showPT:true,showMDV:true,econSrc:'paper',res:null,sweep:null,busy:false};
+  showTriv:false,showPT:true,showMDV:true,econSrc:'live',res:null,sweep:null,busy:false,
+  r:R_RATIO,g:RIDGE};
 
 function computeCS(){const CS=[];for(let v=0;v<N;v++){const cs=new Float64Array(T);
   for(let i=0;i<T;i++)cs[i]=clearSky(v,i);CS.push(cs);}return CS;}
@@ -732,7 +773,7 @@ function loadDataset(kind){
     :'The synthetic mode runs on <b>physics-based synthetic irradiance</b> — true solar geometry per station latitude/longitude plus spatially correlated moving cloud fronts — so the solver behaviour is real even though the weather is simulated. Switch to the real 1999 NLR record for the genuine article.';
   const ss=document.getElementById('sweepStatus');
   ss.textContent=kind==='real'
-    ?'Press “Run full block-length sweep” — 21 solver runs on 70 days of real data, roughly 20–40 s.'
+    ?'Press “Run full block-length sweep” — 21 solver runs on 70 days of real data, a few seconds.'
     :'Press “Run full block-length sweep” — ~21 solver runs, a few seconds.';
 }
 const {W,Lg}=buildGraph();
@@ -916,27 +957,27 @@ function runScenario(cb){
     const blk=BLOCKS[state.blockIdx].s;
     const {M,frac}=buildBlockMask(blk,state.frac,state.maskSeed);
     const t0=performance.now();
-    const stl=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,true,MDV_WIN,CG_TOL,CG_MAX);
+    const stl=stmacJoint(DATA.U,M,Lg,state.r,state.g,true,MDV_WIN);
     const tSolve=performance.now()-t0;
     const pt=pureTemporal(DATA.U,M,AT);
-    const stt=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,false,MDV_WIN,CG_TOL,CG_MAX);
+    const stt=stmacJoint(DATA.U,M,Lg,state.r,state.g,false,MDV_WIN);
     const mdv=climFill(DATA.U,M,stl.C);
     const res={M,effFrac:frac,PT:pt,MDV:mdv,STL:stl.R,STT:stt.R,
       rPT:rmseMasked(DATA.U,DATA.CS,pt,M),
       rMDV:rmseMasked(DATA.U,DATA.CS,mdv,M),
       rSTL:rmseMasked(DATA.U,DATA.CS,stl.R,M),
       rSTT:rmseMasked(DATA.U,DATA.CS,stt.R,M),
-      ms:tSolve,iters:stl.iters};
+      ms:tSolve,n:stl.n,bw:stl.bw};
     state.res=res;
     document.getElementById('bSolve').textContent=fmtMs(tSolve);
-    document.getElementById('bPat').textContent=res.iters;
+    document.getElementById('bPat').textContent=res.n.toLocaleString();
     document.getElementById('effLine').textContent='effective missing: '+(100*frac).toFixed(1)+'% per station ('+
       Math.max(1,Math.ceil(state.frac*T/blk))+' block'+(Math.ceil(state.frac*T/blk)>1?'s':'')+' × '+BLOCKS[state.blockIdx].lab+')';
     animateMetric('cPT',Math.round(res.rPT),' W/m²',0);
     animateMetric('cSTL',Math.round(res.rSTL),' W/m²',0);
     animateMetric('cSTT',Math.round(res.rSTT),' W/m²',0);
     animateMetric('cAdv',Math.round(res.rMDV),' W/m²',0);
-    st.textContent='solved. STMAC reconstruction: '+fmtMs(tSolve)+' for '+N+'×'+T.toLocaleString()+' cells, '+res.iters+' conjugate-gradient iterations — no training, no fitted model.';
+    st.textContent='solved. STMAC reconstruction: '+fmtMs(tSolve)+' for '+N+'×'+T.toLocaleString()+' cells; '+res.n.toLocaleString()+' unknown cells solved exactly in one sparse factorisation — no training, no fitted model.';
     state.gapIdx=0;
     updateChartHead();drawTS();updateInterp();updateEcon();
     state.busy=false;
@@ -964,7 +1005,10 @@ function updateInterp(){
   else s+=' and edges STMAC by <b>'+Math.abs(dCL).toFixed(1)+' W/m\u00b2</b> in this draw; across the 20 mask realisations of the paper STMAC stays below it at every block length.';
   if(gain>0.3)s+=' Aligning stations to solar time before coupling is worth <b>'+gain.toFixed(1)+' W/m\u00b2</b> against the trivial sheaf here.';
   else s+=' Trivial and longitude sheaves land within <b>'+Math.abs(gain).toFixed(2)+' W/m\u00b2</b> of each other in this draw; the paper finds the alignment significant only for gaps up to 6 hours.';
-  s+=' Solved in <b>'+r.iters+'</b> conjugate-gradient iterations.';
+  if(state.r!==R_RATIO||state.g!==RIDGE)s+=' <b>Note:</b> the weights are set to r = '+state.r+', \u03b3 = '+state.g+', not the paper\u2019s cross-validated pair (r = 1000, \u03b3 = 3); the readings above describe your setting, not the published one.';
+  const rank=[['Pure temporal',r.rPT],['Station climatology',r.rMDV],['STMAC (trivial sheaf)',r.rSTT],['STMAC (longitude sheaf)',r.rSTL]].sort((a,b)=>a[1]-b[1]);
+  s+='<br><b>Ranking for this scenario</b> (lower error is better): '+rank.map((x,i)=>(i+1)+'. '+x[0]+' '+Math.round(x[1])+' W/m\u00b2').join(' \u00b7 ')+'.';
+  s+=' In plain words: an error of '+Math.round(r.rSTL)+' W/m\u00b2 means the repaired curve is typically off by about '+Math.round(r.rSTL)+' W per square metre of sensor during daylight, against a midday maximum near 900\u20131000 in this winter window.';
   el.innerHTML=s;
 }
 function updateChartHead(){
@@ -997,9 +1041,9 @@ function runSweep(){
     setTimeout(()=>{
       const {M,frac}=buildBlockMask(bl.s,state.frac,state.maskSeed);
       const pt=rmseMasked(DATA.U,DATA.CS,pureTemporal(DATA.U,M,AT),M);
-      const jl=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,true,MDV_WIN,CG_TOL,CG_MAX);
+      const jl=stmacJoint(DATA.U,M,Lg,state.r,state.g,true,MDV_WIN);
       const sl=rmseMasked(DATA.U,DATA.CS,jl.R,M);
-      const sT=rmseMasked(DATA.U,DATA.CS,stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,false,MDV_WIN,CG_TOL,CG_MAX).R,M);
+      const sT=rmseMasked(DATA.U,DATA.CS,stmacJoint(DATA.U,M,Lg,state.r,state.g,false,MDV_WIN).R,M);
       const md=rmseMasked(DATA.U,DATA.CS,climFill(DATA.U,M,jl.C),M);
       rows.push({lab:bl.lab,pt,mdv:md,sl,st:sT,frac});
       k++;drawSweep(rows);step();
@@ -1090,6 +1134,12 @@ function updateEcon(){
     if(tf){const cTF=cost(gw,tf.R,pen,out)/1e6;
       txt+=' The trained Transformer costs <b>$'+(cTF>=100?cTF.toFixed(0):cTF.toFixed(1))+'M/yr</b>, <b>$'+(cTF-cST).toFixed(1)+'M/yr</b> above STMAC.';}
     txt+=' The pure-temporal row is a reference only: its RMSE exceeds the physical irradiance range.';
+    if(state.econSrc==='paper'&&state.res){
+      const cL=cost(gw,state.res.rSTL,pen,out)/1e6,cM=cost(gw,state.res.rMDV,pen,out)/1e6;
+      txt+=' <b>Your current scenario</b> ('+BLOCKS[state.blockIdx].lab+' blocks, live 70-day window): STMAC '+Math.round(state.res.rSTL)+' W/m\u00b2 \u2192 $'+cL.toFixed(1)+'M/yr; climatology '+Math.round(state.res.rMDV)+' W/m\u00b2 \u2192 $'+cM.toFixed(1)+'M/yr at these market settings.';
+    }else if(state.res){
+      txt+=' These live figures come from the '+BLOCKS[state.blockIdx].lab+' scenario you just ran on the 70-day window, so they move every time you change the block length, outage fraction, mask or weights; switch to the paper source for the full-year Table I figures at 3-day blocks.';
+    }
     ei.innerHTML=txt;
   }
   // bars
@@ -1149,6 +1199,19 @@ function buildChips(){
     el.appendChild(c);
   });
 }
+function buildWeightChips(){
+  const er=document.getElementById('rChips'),eg=document.getElementById('gChips');
+  er.innerHTML='';eg.innerHTML='';
+  const lab=document.createElement('span');lab.className='chip-lab';lab.textContent='r (time vs. space)';er.appendChild(lab);
+  R_CHOICES.forEach(v=>{const c=document.createElement('button');c.className='chip'+(v===state.r?' on':'');
+    c.textContent=String(v);c.title='ratio of the temporal smoothness weight to the spatial weight';
+    c.addEventListener('click',()=>{state.r=v;buildWeightChips();runScenario();});er.appendChild(c);});
+  const lab2=document.createElement('span');lab2.className='chip-lab';lab2.textContent='γ (pull toward climatology)';eg.appendChild(lab2);
+  G_CHOICES.forEach(v=>{const c=document.createElement('button');c.className='chip'+(v===state.g?' on':'');
+    c.textContent=String(v);c.title='ridge weight: larger values keep long gaps closer to the station climatology';
+    c.addEventListener('click',()=>{state.g=v;buildWeightChips();runScenario();});eg.appendChild(c);});
+}
+buildWeightChips();
 document.getElementById('fracSlider').addEventListener('input',e=>{
   document.getElementById('fracVal').textContent=e.target.value+'%';});
 document.getElementById('fracSlider').addEventListener('change',e=>{

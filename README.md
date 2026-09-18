@@ -2,47 +2,63 @@
 
 **Interactive, in-browser companion to the IEEE SUSTAIN 2026 paper:**
 *Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
-Framework for Saudi Vision 2030* — Amrin Barata, BPS—Statistics Indonesia.
+Framework for Saudi Vision 2030* — Amrin Barata, BPS-Statistics Indonesia.
 
 **Live demo:** https://barata90.github.io/stmac-demo/
 
 ## What this is
 
-A single self-contained HTML file that runs the full STMAC reconstruction pipeline
+A single self-contained HTML file that runs the STMAC reconstruction pipeline
 client-side, in JavaScript, on **70 days of the real 1999 Saudi NLR record**
 (Oct 22 – Dec 30, 1999; 11 stations, 5-minute GHI) embedded directly in the page.
 Inject realistic block-shaped sensor outages (30 min – 7 days), and the solver
-repairs the field in a few hundred milliseconds — no server, no GPU, no training.
+repairs the field in well under a second — no server, no GPU, no training.
 
-That is the point. The paper's central claim is that STMAC is training-free with
-O(N²T) per-iteration cost; a method with no learning loop is portable enough to
-live inside a web page. The trained Transformer baseline (136,000 parameters,
-25 epochs) could not be demonstrated this way.
+That is the point. The paper's central claim is that STMAC is training-free: no training
+set, no fitted model, and two scalar weights selected by block cross-validation on observed
+cells. A method with no learning loop is portable enough to live inside a web page. The
+trained Transformer baseline (136,000 parameters, 25 epochs) could not be demonstrated
+this way.
 
 ## What runs in the page
 
-- **Pentadiagonal temporal solves** — banded Cholesky on `diag(M) + αt·D₂ᵀD₂`, per station.
-- **Sheaf-Laplacian spatial coupling** — k = 3 NN graph, Gaussian weights (σ = 300 km),
-  per-timestamp 11×11 Cholesky with **pattern-grouped factor caching**, as in Algorithm 1.
-- **Longitude-sheaf restriction maps** — circular time shifts relative to the network
-  mean longitude, matching the reference implementation (integer-sample shifts here;
-  the reference uses FFT fractional shifts — difference ≤ 2.5 min).
-- **Alternating Tikhonov iteration** (4 iterations, αt = 10, αs = 1). This demo uses a
-  proximal-alternating variant: masked cells carry a weak fidelity (β = 0.4) to the
-  previous half-step, a standard splitting that preserves Algorithm 1's structure.
-- Live **block-length sweep** reproducing the shape of Fig. 1, and the **Vision 2030
-  economic model** of Eq. (5) with the paper's tornado sensitivity analysis.
+- **Station climatology (MDV)** — for every cell, the mean of the observed values at the
+  same time of day within a ±15-day window, computed from observed cells only. STMAC
+  reconstructs departures from this prior, and the same field is drawn as a baseline curve.
+- **Sheaf-Laplacian spatial coupling** — k = 3 NN graph, Gaussian weights (σ = 300 km).
+- **Longitude-sheaf restriction maps** — circular time shifts into local solar time
+  (integer-sample shifts here; the reference implementation uses FFT fractional shifts,
+  a difference of at most 2.5 minutes).
+- **One joint space-time solve** — the constrained problem of Eq. (5) reduces to a sparse
+  symmetric positive-definite system over the unobserved cells (Eq. 6). Ordering the
+  unknowns by (time, station) makes that system banded with half-bandwidth below 2N, so
+  it is solved exactly by one banded Cholesky factorisation in 20 to 130 ms. The default
+  weights are r = 1000 and γ = 3, the pair selected in the paper by block cross-validation;
+  the page also lets you move both knobs to see what the selection is protecting against.
+- **Pure-temporal baseline** — banded Cholesky on `diag(M) + αt·D₂ᵀD₂` per station, αt = 10.
+- Live **block-length sweep** reproducing the shape of Fig. 1, and the **Vision 2030 cost
+  model** of Eq. (7).
+
+The JavaScript solver was checked against the Python reference implementation
+(`stmac_joint.py`) on the embedded window with an identical mask: same RMSE to six
+decimals, maximum difference 1.5 × 10⁻¹¹ W/m² on the reconstructed cells.
 
 ## Live numbers vs. the paper's Table I
 
-Numbers computed live here will not equal Table I, deliberately and for honest reasons:
-Table I is the **full-year** record (101,805 timestamps) with the reference FFT-shift
-solver; this page embeds a 70-day winter subset (lower absolute irradiance → lower
-absolute RMSE) and uses the proximal variant. The **structure is identical**: pure
-temporal collapses by an order of magnitude or more as blocks lengthen, STMAC stays
-essentially flat, the crossover sits near 6–12 h, and the longitude sheaf consistently
-matches or edges out the trivial sheaf. Table I is quoted verbatim in the UI as the
-benchmark of record.
+Numbers computed live here will not equal the full-year column of Table I. Table I averages
+20 mask realisations over the **full year** (101,805 timestamps); this page embeds a 70-day
+winter subset with lower absolute irradiance and draws a single mask at a time. That window
+(22 Oct – 30 Dec 1999) overlaps the **held-out period** used for the Transformer comparison,
+so the live errors sit closer to the held-out column: STMAC around 54 to 94 W/m² across
+block lengths, against 61 to 99 W/m² in the paper.
+
+The structure carries over. Pure temporal is the most accurate method for gaps up to about
+two hours and then collapses by an order of magnitude or more. The station climatology is
+nearly flat across block lengths. STMAC stays below the climatology on short and medium
+gaps, and the two converge on multi-day gaps, where the diurnal prior does most of the work
+and the spatial correction adds only a few W/m². Trivial and longitude sheaves differ by a
+fraction of a W/m² in a single draw; the paper finds the alignment significant only for gaps
+up to six hours.
 
 ## Data provenance
 
@@ -57,11 +73,15 @@ synthetic mode (toggle in the UI) before public hosting.
 
 ## Analysis notebooks
 
-The full experimental pipeline (data download and QC, graph construction, the STMAC
-solver, the block-length sweep of Table I, the Transformer baseline, the persistence
-exploration, and the Vision 2030 economics) is published under
-[`notebooks/`](notebooks/), with outputs preserved from the runs that produced the
-paper's numbers. See `notebooks/README.md` for the pipeline map and data availability.
+The experimental pipeline is published under [`notebooks/`](notebooks/), with outputs
+preserved from the runs that produced the paper's numbers. Notebook `12` contains the
+corrected joint solver, the rerun of every experiment against it, and the baselines added
+during the camera-ready revision (station climatology, held-out Transformer evaluation).
+Notebook `12b` holds the sheaf ablation inside the climatology formulation and the
+per-network weight selection on the satellite field. The earlier notebooks record the
+experiments as they were first run and are kept for provenance; where their numbers differ
+from the paper, notebooks `12` and `12b` are the ones that produced the published values.
+See `notebooks/README.md` for the pipeline map and data availability.
 
 ## Run / deploy
 
