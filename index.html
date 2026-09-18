@@ -129,6 +129,7 @@ table.ref td.win{color:var(--stmac);font-weight:600}
 footer{border-top:1px solid var(--line);margin-top:26px;padding:24px 0 44px;color:var(--faint);font-size:12.5px}
 footer .cite{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px}
 .chip-lab{font-size:.78rem;opacity:.75;margin-right:6px;align-self:center}
+.ref-list{font-size:.84rem;line-height:1.5;opacity:.9;padding-left:18px;margin:6px 0 0}.ref-list li{margin-bottom:7px}.ref-list ul{padding-left:16px;margin:4px 0}
 </style>
 <style id="premium">
 /* ---- atmosphere ---- */
@@ -375,8 +376,15 @@ footer{border-top:1px solid transparent;
         <canvas id="costChart" height="270"></canvas>
       </div>
       <div>
-        <div class="bars-lbl">How to read these numbers</div>
-        <p class="ref-cap">The pure-temporal bar is a reference, not an operating baseline: its RMSE at a 3-day gap (1,904 W/m²) exceeds the physical irradiance range, and clipping its output to [0, 1400] W/m² already brings it to 658. The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $4.6M to $20.2M per year across the paper's three scenarios; against the station climatology, $0.2M to $0.7M. Replacing RMSE by mean absolute error or by deadband, tiered and asymmetric settlement lowers every bar by 38% to 73% and leaves the ordering unchanged.</p>
+        <div class="bars-lbl">This simulation, in plain words (updates with every run)</div>
+        <ul class="ref-list" id="econLive"><li>Run a scenario to see the live reading.</li></ul>
+        <div class="bars-lbl" style="margin-top:16px">What the paper reports (Table II: full year, 20 masks, 3-day blocks)</div>
+        <ul class="ref-list">
+          <li>The pure-temporal bar is a reference, not an operating baseline. Its RMSE at a 3-day gap (1,904 W/m²) exceeds the physical range of sunlight; clipping its output to [0, 1400] W/m² already brings it to 658.</li>
+          <li>The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $4.6M to $20.2M per year across the paper's three scenarios (40 GW at $3/MWh, 52.7 GW at $5/MWh, 52.7 GW at $10/MWh).</li>
+          <li>Against the station climatology, STMAC saves $0.2M to $0.7M per year, because at 3-day gaps the two differ by only 3 W/m².</li>
+          <li>Replacing RMSE by mean absolute error, or by deadband, tiered and asymmetric settlement, lowers every bar by 38% to 73% and leaves the ordering unchanged. A tiered rate of twice the base raises it by 20%, so Eq. (7) is a first-order estimate, not a bound.</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -1141,6 +1149,34 @@ function updateEcon(){
       txt+=' These live figures come from the '+BLOCKS[state.blockIdx].lab+' scenario you just ran on the 70-day window, so they move every time you change the block length, outage fraction, mask or weights; switch to the paper source for the full-year Table I figures at 3-day blocks.';
     }
     ei.innerHTML=txt;
+  }
+  const lv=document.getElementById('econLive');
+  if(lv){
+    if(!state.res){lv.innerHTML='<li>Run a scenario to see the live reading.</li>';}
+    else{
+      const r=state.res,bl=BLOCKS[state.blockIdx];
+      const fm=v=>(v>=100?v.toFixed(0):v.toFixed(1));
+      const rows=[['Pure temporal',r.rPT],['Station climatology (MDV)',r.rMDV],['STMAC \u00b7 trivial sheaf',r.rSTT],['STMAC \u00b7 longitude sheaf',r.rSTL]]
+        .map(x=>({lab:x[0],R:x[1],c:cost(gw,x[1],pen,out)/1e6})).sort((a,b)=>a.c-b.c);
+      const st=rows.find(x=>x.lab.indexOf('longitude')>=0),cl=rows.find(x=>x.lab.indexOf('climatology')>=0),pt=rows.find(x=>x.lab.indexOf('Pure')>=0);
+      const perW=gw*out*4380*pen/1e6;
+      const items=[];
+      items.push('<b>Scenario:</b> '+bl.lab+' outages covering '+Math.round(r.effFrac*100)+'% of each station\u2019s record (mask seed '+state.maskSeed+'), '
+        +(state.dataset==='real'?'real 1999 record, 22 Oct to 30 Dec':'synthetic weather')+', weights r = '+state.r+', \u03b3 = '+state.g
+        +(state.r===R_RATIO&&state.g===RIDGE?' (the paper\u2019s values).':' (changed from the paper\u2019s r = 1000, \u03b3 = 3).'));
+      items.push('<b>Market levers:</b> '+gw+' GW deployed, $'+pen+'/MWh penalty, '+Math.round(out*100)+'% outage share. At these settings every 1 W/m\u00b2 of reconstruction error costs about <b>$'+perW.toFixed(2)+'M per year</b>, so the cost bars are simply the error bars in dollars.');
+      items.push('<b>Ranking by annual cost (cheapest first):</b><ul>'+rows.map((x,i)=>'<li>'+(i+1)+'. '+x.lab+': '+Math.round(x.R)+' W/m\u00b2 \u2192 $'+fm(x.c)+'M/yr</li>').join('')+'</ul>');
+      const d=cl.c-st.c;
+      if(d>0.05)items.push('<b>STMAC against the climatology:</b> STMAC is cheaper by <b>$'+d.toFixed(2)+'M/yr</b> ('+(cl.R-st.R).toFixed(1)+' W/m\u00b2 less error). This is the comparison that matters, because the climatology is the simplest method that stays within the physical range.');
+      else if(d<-0.05)items.push('<b>STMAC against the climatology:</b> in this draw the climatology is cheaper by $'+(-d).toFixed(2)+'M/yr ('+(st.R-cl.R).toFixed(1)+' W/m\u00b2). Single masks can fall either way on long gaps; over the paper\u2019s 20 masks STMAC stays below the climatology at every block length, by 2.6 to 72 W/m\u00b2.');
+      else items.push('<b>STMAC against the climatology:</b> the two are within $'+Math.abs(d).toFixed(2)+'M/yr of each other. On a gap this long the diurnal prior does most of the work, and the spatial correction adds little.');
+      items.push('<b>STMAC against pure temporal:</b> $'+fm(pt.c-st.c)+'M/yr apart. Read this as a warning about naive smoothing rather than as a saving: at '+bl.lab+' blocks pure temporal reaches '+Math.round(pt.R)+' W/m\u00b2'+(pt.R>1400?', beyond the physical range of sunlight':'')+'.');
+      const gs=r.rSTT-r.rSTL;
+      items.push('<b>Solar-time alignment:</b> the longitude sheaf is '+(gs>0.05?gs.toFixed(2)+' W/m\u00b2 better than':gs<-0.05?(-gs).toFixed(2)+' W/m\u00b2 worse than':'within '+Math.abs(gs).toFixed(2)+' W/m\u00b2 of')+' the trivial sheaf here, worth $'+Math.abs(gs*perW).toFixed(3)+'M/yr. The paper finds the alignment significant only for gaps up to 6 hours.');
+      if(state.dataset==='real')items.push('<b>Why these figures are lower than the paper\u2019s:</b> Table II uses full-year means over 20 masks at 3-day blocks (STMAC 163 W/m\u00b2). This page runs one mask on a 70-day winter window with weaker sunlight, so both the errors and the dollar figures are smaller. The ordering of the methods is what carries over.');
+      items.push('<b>What to try next:</b> shorten the block to 30 min or 2 h and pure temporal becomes the cheapest; lengthen it to 3 or 7 days and the climatology catches up with STMAC; double the penalty rate and every bar doubles; set \u03b3 = 0 to see what removing the pull toward climatology does on long gaps.');
+      lv.innerHTML=items.map(t=>'<li>'+t+'</li>').join('');
+    }
   }
   // bars
   const cv=document.getElementById('costChart');
