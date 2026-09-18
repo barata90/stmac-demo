@@ -217,12 +217,12 @@ footer{border-top:1px solid transparent;
   <p class="sub">Training-free solar resource reconstruction via cellular sheaves. Break the Saudi sensor
   network with realistic block outages, then watch the sheaf solver repair it — right here, in your browser.
   No GPU, no training data, no learned weights — and the default dataset is 70 days of the <b>real 1999
-  Saudi NLR record</b>, embedded in this very page. The solve-time badge below <em>is</em> the paper's thesis.</p>
+  Saudi NLR record</b>, embedded in this very page. The solver here is the one in the paper: a single sparse space-time system on departures from each station's diurnal climatology.</p>
   <div class="console-strip">
     <div class="badge solve" title="Wall-clock time for the full STMAC reconstruction of the current scenario, measured live in your browser"><span class="dot"></span>Last solve <b id="bSolve">—</b></div>
     <div class="badge" title="STMAC learns nothing in advance: no training set, no learned weights, no GPU — the paper’s central claim">Trained parameters <b>0</b></div>
-    <div class="badge" title="Alternating Tikhonov passes (Algorithm 1): a temporal solve per station, then a spatial solve per timestamp">Iterations <b>4</b></div>
-    <div class="badge" title="Distinct outage patterns across timestamps: each 11×11 factorisation is computed once and reused — the pattern-grouped caching of Algorithm 1">Mask patterns cached <b id="bPat">—</b></div>
+    <div class="badge" title="The two scalar weights of Eq. (5), chosen once by block cross-validation on observed cells — never on the withheld values">Weights <b>r = 1000 · γ = 3</b></div>
+    <div class="badge" title="Conjugate-gradient iterations used to solve the sparse system of Eq. (6) for the current scenario">CG iterations <b id="bPat">—</b></div>
     <div class="badge contrast" title="The deep-learning baseline of Section V-C: needs curated training data, 25 epochs, and retraining whenever the sensor network changes">Transformer baseline needs&nbsp;<b>136,000 params · 25 epochs · retrain on every topology change</b></div>
   </div>
 </div></header>
@@ -234,11 +234,11 @@ footer{border-top:1px solid transparent;
     <div class="g-body">
       <div><span class="num">1.</span><b>The map</b> shows 11 real sensors that measured sunlight across Saudi Arabia through 1999. Lines join neighbouring stations that lend each other information during repair — thicker line, stronger coupling.</div>
       <div><span class="num">2.</span><b>Break the network</b> deletes data on purpose, imitating how sensors really fail (comms loss, maintenance, calibration drift): in contiguous blocks, not random specks. “Block length” is how long each blackout lasts — the paper’s key stress test.</div>
-      <div><span class="num">3.</span><b>The reconstruction chart</b>: amber is what the sensor truly measured; the shaded band is what we deleted; rose is the conventional repair (each station smoothing its own history); teal is STMAC. The closer teal hugs amber inside the band, the better the repair.</div>
-      <div><span class="num">4.</span><b>The error cards</b> average the mistake, in W/m², over deleted daytime cells only — smaller is better. “Advantage” is how many times smaller STMAC’s error is than the conventional one for the exact scenario you just built.</div>
-      <div><span class="num">5.</span><b>The sweep</b> is the paper’s headline in one picture: as blackouts stretch from 30 minutes to 7 days, the conventional error explodes while STMAC’s stays flat — because neighbours can supply the missing days, but a station’s own past cannot.</div>
-      <div><span class="num">6.</span><b>The Vision 2030 panel</b> turns those errors into money: what forecast-error penalties would cost a 40+ GW solar fleet per year, and how much STMAC avoids. The tornado shows which assumption moves that answer most — and it is not STMAC’s tuning.</div>
-      <div><span class="num">7.</span><b>The badges up top</b> are the thesis: zero trained parameters, solved in milliseconds, inside your browser. The deep-learning baseline needs 136,000 trained parameters to do this job — and does it slightly worse on long gaps.</div>
+      <div><span class="num">3.</span><b>The reconstruction chart</b>: amber is what the sensor truly measured; the shaded band is what we deleted; rose is the conventional repair (each station smoothing its own history); green is the station climatology; teal is STMAC. The closer teal hugs amber inside the band, the better the repair.</div>
+      <div><span class="num">4.</span><b>The error cards</b> average the mistake, in W/m², over deleted daytime cells only — smaller is better. The fourth card is the station climatology: each station's own mean diurnal cycle, the baseline any spatial method has to beat.</div>
+      <div><span class="num">5.</span><b>The sweep</b> shows how each method behaves as blackouts stretch from 30 minutes to 7 days: smoothing a station's own history explodes, the climatology stays flat, and STMAC tracks the climatology while staying below it.</div>
+      <div><span class="num">6.</span><b>The Vision 2030 panel</b> turns those errors into money: what forecast-error penalties would cost a 40+ GW solar fleet per year for each method's error level. The gap to the climatology is small; the gap to the trained Transformer is not.</div>
+      <div><span class="num">7.</span><b>The badges up top</b> are the thesis: no training set, no fitted model, two scalar weights chosen from observed data, solved inside your browser. The deep-learning baseline needs 136,000 trained parameters and 25 epochs to do the same job.</div>
     </div>
   </details>
 
@@ -285,7 +285,7 @@ footer{border-top:1px solid transparent;
     <div class="chart-head">
       <div>
         <h2 id="chartTitle">Reconstruction — station</h2>
-        <p class="cap" id="chartSub">Window centred on an injected outage; shaded band = data removed from this station. Amber = ground truth, rose = pure temporal (goes flat across long gaps), teal = STMAC rebuilding each diurnal cycle from neighbouring stations.</p>
+        <p class="cap" id="chartSub">Window centred on an injected outage; shaded band = data removed from this station. Amber = ground truth, rose = pure temporal (goes flat across long gaps), green = station climatology, teal = STMAC, which corrects the climatology with what the neighbouring stations saw.</p>
       </div>
       <div class="gap-nav">
         <button class="btn" id="prevGap" aria-label="Previous gap">◀</button>
@@ -298,36 +298,36 @@ footer{border-top:1px solid transparent;
     <div class="disclose" id="disclose">The live demo runs on <b>physics-based synthetic irradiance</b> — true solar geometry per
     station latitude/longitude plus spatially correlated moving cloud fronts — so the solver behaviour is real even though
     the weather is simulated. Benchmark numbers on the <b>real 1999 Saudi NLR record</b> (101,805 timestamps) are quoted
-    from Table I of the paper in the panel below. Station coordinates are approximate.</div>
+    from Table I of the paper in the panel below. The embedded window (22 Oct to 30 Dec 1999) overlaps the held-out period used for the Transformer comparison, so live numbers here are closest to the held-out column of the paper. Station coordinates are approximate.</div>
   </section>
 
   <section class="row-metrics">
     <div class="panel">
       <h2>Live error — this outage scenario</h2>
-      <p class="cap">RMSE on removed daytime cells only (W/m²), exactly as in the paper — <b>lower is better</b>. The advantage card is pure-temporal error ÷ STMAC-longitude error for this exact scenario.</p>
+      <p class="cap">RMSE on removed daytime cells only (W/m²), exactly as in the paper — <b>lower is better</b>. The climatology card is the baseline STMAC has to beat: each station's own mean diurnal cycle over a ±15-day window.</p>
       <div class="cards">
         <div class="card pt"><div class="lab">Pure temporal</div><div class="val" id="cPT">—<span class="un"> W/m²</span></div></div>
         <div class="card stl"><div class="lab">STMAC · longitude sheaf</div><div class="val" id="cSTL">—<span class="un"> W/m²</span></div></div>
         <div class="card stt"><div class="lab">STMAC · trivial sheaf</div><div class="val" id="cSTT">—<span class="un"> W/m²</span></div></div>
-        <div class="card adv"><div class="lab">STMAC advantage</div><div class="val" id="cAdv">—<span class="un">×</span></div></div>
+        <div class="card adv"><div class="lab">Station climatology (MDV)</div><div class="val" id="cAdv">—<span class="un"> W/m²</span></div></div>
       </div>
       <div class="interp" id="liveInterp">—</div>
-      <div class="bars-lbl" style="margin-top:14px">Paper benchmark · real 1999 NLR record (Table I)</div>
+      <div class="bars-lbl" style="margin-top:14px">Paper benchmark · real 1999 NLR record (Table I, full year, 20 masks)</div>
       <table class="ref">
-        <tr><th>Block</th><th>Pure temp.</th><th>Transformer</th><th>STMAC triv.</th><th>STMAC long.</th></tr>
-        <tr><td>30 min</td><td>69</td><td>154</td><td>200</td><td>197</td></tr>
-        <tr><td>6 h</td><td>215</td><td>204</td><td>192</td><td class="win">191</td></tr>
-        <tr><td>1 day</td><td>725</td><td>243</td><td class="win">200</td><td class="win">200</td></tr>
-        <tr><td>3 day</td><td>1,960</td><td>232</td><td>207</td><td class="win">205</td></tr>
-        <tr><td>7 day</td><td>4,442</td><td>275</td><td>209</td><td class="win">208</td></tr>
-        <tr><td>growth</td><td>64×</td><td>1.79×</td><td>1.05×</td><td class="win">1.06×</td></tr>
+        <tr><th>Block</th><th>Pure temp.</th><th>Climatology</th><th>Transformer</th><th>STMAC</th></tr>
+        <tr><td>30 min</td><td class="win">70</td><td>162.0</td><td>153.0</td><td>89.6</td></tr>
+        <tr><td>2 h</td><td class="win">114</td><td>162.5</td><td>165.6</td><td>140.0</td></tr>
+        <tr><td>6 h</td><td>239</td><td>163.2</td><td>201.3</td><td class="win">154.4</td></tr>
+        <tr><td>1 day</td><td>727</td><td>160.8</td><td>229.9</td><td class="win">157.4</td></tr>
+        <tr><td>3 day</td><td>1,904</td><td>166.2</td><td>250.7</td><td class="win">163.3</td></tr>
+        <tr><td>7 day</td><td>4,961</td><td>169.1</td><td>251.8</td><td class="win">166.5</td></tr>
       </table>
-      <p class="ref-cap">Teal marks where STMAC wins the row. It matches or beats the trained Transformer at every block ≥ 6 h — with zero training.</p>
+      <p class="ref-cap">Teal marks the lowest error in the row. Pure temporal wins gaps up to 2 hours and then collapses; STMAC is lowest from 6 hours on, but its margin over the station climatology narrows from 72 W/m² at 30 minutes to 2.6 W/m² at 7 days. On the held-out November–December period (30 masks) STMAC runs 61 to 99 W/m² against 106 to 139 for the Transformer.</p>
     </div>
 
     <div class="panel">
       <h2>Block-length sweep — the headline figure, live</h2>
-      <p class="cap">Reproduces the shape of Fig. 1: hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: left of the crossover a station’s own history suffices; right of it, gaps span whole diurnal cycles that no smoothness prior can invent — only neighbouring stations, glued by the sheaf, can supply them.</p>
+      <p class="cap">Reproduces the shape of Fig. 1: hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: on short gaps a station's own history suffices, so pure temporal wins; once gaps span whole diurnal cycles no smoothness prior can invent them, and the work passes to the diurnal climatology plus the spatial correction that STMAC adds to it.</p>
       <canvas id="sweepChart" height="330"></canvas>
       <div class="series-legend" id="sweepLegend"></div>
       <div class="status" id="sweepStatus"></div>
@@ -336,7 +336,7 @@ footer{border-top:1px solid transparent;
 
   <section class="panel">
     <h2>Vision 2030 economic translation</h2>
-    <p class="cap">Eq. (5) of the paper: C = P<sub>deploy</sub> · (R/1000) · ε · H<sub>d</sub> · c. Move the market levers; the physics stays fixed.</p>
+    <p class="cap">Eq. (7) of the paper: C<sub>err</sub> = P<sub>deploy</sub> · (R/1000) · ε · H<sub>d</sub> · c. It prices the reconstruction error of each method, not a saving claimed over a broken baseline. Move the market levers; the physics stays fixed.</p>
     <div class="econ-grid">
       <div>
         <div class="ctl-group">
@@ -360,7 +360,7 @@ footer{border-top:1px solid transparent;
         </div>
         <div class="headline-save">
           <div class="num" id="saveNum">$—M</div>
-          <div class="lbl">avoided losses per year, STMAC vs pure-temporal baseline</div>
+          <div class="lbl">annual cost of STMAC's reconstruction error under Eq. (7)</div>
         </div>
         <div class="interp" id="econInterp">—</div>
       </div>
@@ -369,9 +369,8 @@ footer{border-top:1px solid transparent;
         <canvas id="costChart" height="270"></canvas>
       </div>
       <div>
-        <div class="bars-lbl">Tornado sensitivity (paper base case, $92.2M)</div>
-        <canvas id="tornado" height="270"></canvas>
-        <p class="ref-cap">Each bar: how far annual savings swing when that one input sweeps its plausible range, others held at base. Method RMSE is the <em>smallest</em> driver — the savings claim is robust to STMAC tuning; the real uncertainty lives in market parameters.</p>
+        <div class="bars-lbl">How to read these numbers</div>
+        <p class="ref-cap">The pure-temporal bar is a reference, not an operating baseline: its RMSE at a 3-day gap (1,904 W/m²) exceeds the physical irradiance range, and clipping its output to [0, 1400] W/m² already brings it to 658. The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $4.6M to $20.2M per year across the paper's three scenarios; against the station climatology, $0.2M to $0.7M. Replacing RMSE by mean absolute error or by deadband, tiered and asymmetric settlement lowers every bar by 38% to 73% and leaves the ordering unchanged.</p>
       </div>
     </div>
   </section>
@@ -381,8 +380,9 @@ footer{border-top:1px solid transparent;
 <footer><div class="wrap">
   <div class="cite">A. Barata, “Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
   Framework for Saudi Vision 2030,” submitted to IEEE SUSTAIN 2026, KFUPM, Saudi Arabia.</div>
-  <div>Everything on this page — the pentadiagonal temporal solves, the sheaf-Laplacian spatial coupling with
-  pattern-grouped Cholesky caching, the longitude time-shift restriction maps — runs client-side in JavaScript.
+  <div>Everything on this page — the diurnal climatology, the sheaf-Laplacian spatial coupling, the longitude
+  time-shift restriction maps and the conjugate-gradient solve of the sparse space-time system — runs client-side
+  in JavaScript, and reproduces the Python reference to within 2×10⁻⁵ W/m² on the same mask.
   That is the point: a method with no training loop can live anywhere, including inside this page.
   Supports UN SDG 7 · 9 · 13. Source code and the complete analysis notebooks: <a href="https://github.com/barata90/stmac-demo">github.com/barata90/stmac-demo</a>.</div>
 </div></footer>
@@ -431,8 +431,12 @@ const SAUDI=[[34.95,29.35],[36.07,29.19],[37.00,31.50],[38.00,32.00],[39.20,32.1
 
 const BLOCKS=[{lab:'30 min',s:6},{lab:'2 h',s:24},{lab:'6 h',s:72},{lab:'12 h',s:144},
               {lab:'1 day',s:288},{lab:'3 days',s:864},{lab:'7 days',s:2016}];
-const AT=10.0, AS=1.0, BETA=0.4, NITER=4;
-const PAPER={pt:1960, tf:232, stt:207, stl:205};
+const AT=10.0;                    /* smoothing weight of the pure-temporal baseline */
+/* STMAC weights: ratio r and ridge g, selected once by block cross-validation
+   on observed cells of the full 1999 record (Section IV-D of the paper) */
+const R_RATIO=1000, RIDGE=3, MDV_WIN=15, CG_TOL=1e-5, CG_MAX=400;
+/* Paper, Table I, 3-day blocks, full-year means over 20 mask realisations (W/m2) */
+const PAPER={pt:1904, tf:251, mdv:166, stmac:163};
 
 /* ================= physics: clear sky + clouds ================= */
 function clearSky(v,i){
@@ -552,44 +556,127 @@ function pureTemporal(Z,M,at){
     tempSolve(Z[v],w,at,out);R.push(out);}
   return R;
 }
-function stmac(Z,M,Lg,at,as2,useShift,beta,nIter){
-  const del=STATIONS.map(s=>Math.round((s.lon/15-TZ)*12));
-  const Za=[],Ma=[];
+/* ---- climatology prior: mean diurnal variation, observed cells only ---- */
+function mdvPrior(Z,M,halfWin){
+  const nd=Math.round(T/SPD),C=[];
+  const psum=new Float64Array(nd+1),pcnt=new Float64Array(nd+1);
   for(let v=0;v<N;v++){
-    const z=new Float64Array(T),mm=new Float64Array(T);
-    if(useShift){shiftInt(Z[v],-del[v],z);
-      const tmp=new Float64Array(T);for(let i=0;i<T;i++)tmp[i]=M[v][i];shiftInt(tmp,-del[v],mm);}
-    else{z.set(Z[v]);for(let i=0;i<T;i++)mm[i]=M[v][i];}
-    Za.push(z);Ma.push(mm);
-  }
-  const U=[];for(let v=0;v<N;v++){const o=new Float64Array(T);interpInit(Za[v],Ma[v],o);U.push(o);}
-  const w=new Float64Array(T),tg=new Float64Array(T);
-  const Ut=[];for(let v=0;v<N;v++)Ut.push(new Float64Array(T));
-  const patCache=new Map();
-  const b=new Float64Array(N),x=new Float64Array(N);
-  for(let k=0;k<nIter;k++){
-    for(let v=0;v<N;v++){
-      for(let i=0;i<T;i++){const obs=Ma[v][i]>0.5;w[i]=obs?1:beta;tg[i]=obs?Za[v][i]:U[v][i];}
-      tempSolve(tg,w,at,Ut[v]);
+    const c=new Float64Array(T);
+    for(let s=0;s<SPD;s++){
+      psum[0]=0;pcnt[0]=0;
+      for(let d=0;d<nd;d++){
+        const i=d*SPD+s,obs=(i<T&&M[v][i]>0.5);
+        psum[d+1]=psum[d]+(obs?Z[v][i]:0);
+        pcnt[d+1]=pcnt[d]+(obs?1:0);
+      }
+      const tot=psum[nd],totc=pcnt[nd];
+      for(let d=0;d<nd;d++){
+        const lo=Math.max(0,d-halfWin),hi=Math.min(nd,d+halfWin+1);
+        const sw=psum[hi]-psum[lo],cw=pcnt[hi]-pcnt[lo],i=d*SPD+s;
+        if(i<T)c[i]=cw>0?sw/cw:(totc>0?tot/totc:0);
+      }
     }
-    for(let t=0;t<T;t++){
-      let key=0;
-      for(let v=0;v<N;v++)key=key*2+(Ma[v][t]>0.5?1:0);
-      let L=patCache.get(key);
-      if(!L){const A=[];for(let i=0;i<N;i++){A.push(new Float64Array(N));
-          for(let j=0;j<N;j++)A[i][j]=as2*Lg[i][j];
-          A[i][i]+=(Ma[i][t]>0.5?1:beta);}
-        L=chol(A);patCache.set(key,L);}
-      for(let v=0;v<N;v++)b[v]=(Ma[v][t]>0.5?Za[v][t]:beta*Ut[v][t]);
-      cholSolve(L,b,x);
-      for(let v=0;v<N;v++)U[v][t]=x[v];
-    }
+    C.push(c);
   }
+  return C;
+}
+function climFill(Z,M,C){
   const R=[];
   for(let v=0;v<N;v++){const o=new Float64Array(T);
-    if(useShift)shiftInt(U[v],del[v],o);else o.set(U[v]);R.push(o);}
-  return {R,patterns:patCache.size};
+    for(let i=0;i<T;i++)o[i]=(M[v][i]>0.5)?Z[v][i]:C[v][i];R.push(o);}
+  return R;
 }
+/* ---- second-difference operator L_t = D2' D2 (same coefficients as tempSolve) ---- */
+function ltD(i,n){return (i===0||i===n-1)?1:((i===1||i===n-2)?5:6);}
+function ltO(i,n){return (i===0||i===n-2)?-2:-4;}   /* entry (i,i+1) */
+function sparseLg(Lg){
+  const idx=[],val=[];
+  for(let v=0;v<N;v++){const ii=[],vv=[];
+    for(let w=0;w<N;w++)if(Lg[v][w]!==0){ii.push(w);vv.push(Lg[v][w]);}
+    idx.push(ii);val.push(vv);}
+  return {idx,val};
+}
+/* ---- K x = r (I⊗L_t) x + (L_g⊗I) x + g x, restricted to unobserved cells ---- */
+function applyK(X,Y,SPG,r,g,Mm){
+  for(let v=0;v<N;v++){
+    const x=X[v],y=Y[v];
+    for(let i=0;i<T;i++){
+      let s=ltD(i,T)*x[i];
+      if(i>0)s+=ltO(i-1,T)*x[i-1];
+      if(i<T-1)s+=ltO(i,T)*x[i+1];
+      if(i>1)s+=x[i-2];
+      if(i<T-2)s+=x[i+2];
+      y[i]=r*s;
+    }
+  }
+  for(let v=0;v<N;v++){
+    const idx=SPG.idx[v],val=SPG.val[v],y=Y[v],nn=idx.length;
+    for(let q=0;q<nn;q++){const xw=X[idx[q]],c=val[q];
+      for(let i=0;i<T;i++)y[i]+=c*xw[i];}
+  }
+  for(let v=0;v<N;v++){
+    const y=Y[v],x=X[v],m=Mm[v];
+    for(let i=0;i<T;i++){if(m[i]>0.5)y[i]=0;else y[i]+=g*x[i];}
+  }
+}
+/* ---- STMAC: joint space-time solve on departures from the station climatology ---- */
+function stmacJoint(Z,M,Lg,r,g,useShift,halfWin,tol,maxIt){
+  const del=STATIONS.map(s=>Math.round((s.lon/15-TZ)*12));
+  const C=mdvPrior(Z,M,halfWin);
+  const A0=[],Mm=[],tmp=new Float64Array(T);
+  for(let v=0;v<N;v++){
+    const a=new Float64Array(T),mf=new Float64Array(T);
+    for(let i=0;i<T;i++){a[i]=(M[v][i]>0.5)?(Z[v][i]-C[v][i]):0;mf[i]=M[v][i];}
+    if(useShift){
+      const as=new Float64Array(T),ms=new Float64Array(T);
+      shiftInt(a,-del[v],as);shiftInt(mf,-del[v],ms);
+      A0.push(as);Mm.push(ms);
+    }else{A0.push(a);Mm.push(mf);}
+  }
+  const X=[],R=[],Zp=[],P=[],AP=[],DI=[];
+  for(let v=0;v<N;v++){
+    X.push(new Float64Array(T));R.push(new Float64Array(T));Zp.push(new Float64Array(T));
+    P.push(new Float64Array(T));AP.push(new Float64Array(T));
+    const d=new Float64Array(T);
+    for(let i=0;i<T;i++)d[i]=(Mm[v][i]>0.5)?1:(r*ltD(i,T)+Lg[v][v]+g);
+    DI.push(d);
+  }
+  const SPG=sparseLg(Lg);
+  applyK(A0,R,SPG,r,g,Mm);
+  let bn=0;
+  for(let v=0;v<N;v++)for(let i=0;i<T;i++){R[v][i]=-R[v][i];bn+=R[v][i]*R[v][i];}
+  bn=Math.sqrt(bn);
+  let rz=0;
+  for(let v=0;v<N;v++)for(let i=0;i<T;i++){Zp[v][i]=R[v][i]/DI[v][i];P[v][i]=Zp[v][i];rz+=R[v][i]*Zp[v][i];}
+  let it=0;
+  if(bn>0){
+    for(;it<maxIt;it++){
+      applyK(P,AP,SPG,r,g,Mm);
+      let pap=0;
+      for(let v=0;v<N;v++)for(let i=0;i<T;i++)pap+=P[v][i]*AP[v][i];
+      if(pap<=0)break;
+      const al=rz/pap;
+      let rn=0;
+      for(let v=0;v<N;v++)for(let i=0;i<T;i++){X[v][i]+=al*P[v][i];R[v][i]-=al*AP[v][i];rn+=R[v][i]*R[v][i];}
+      if(Math.sqrt(rn)<=tol*bn){it++;break;}
+      let rz2=0;
+      for(let v=0;v<N;v++)for(let i=0;i<T;i++){Zp[v][i]=R[v][i]/DI[v][i];rz2+=R[v][i]*Zp[v][i];}
+      const be=rz2/rz;rz=rz2;
+      for(let v=0;v<N;v++)for(let i=0;i<T;i++)P[v][i]=Zp[v][i]+be*P[v][i];
+    }
+  }
+  const Rec=[];
+  for(let v=0;v<N;v++){
+    for(let i=0;i<T;i++)tmp[i]=A0[v][i]+X[v][i];
+    const back=new Float64Array(T);
+    if(useShift)shiftInt(tmp,del[v],back);else back.set(tmp);
+    const o=new Float64Array(T);
+    for(let i=0;i<T;i++)o[i]=back[i]+C[v][i];
+    Rec.push(o);
+  }
+  return {R:Rec,C:C,iters:it};
+}
+
 function rmseMasked(truth,CS,rec,M){
   let s=0,c=0;
   for(let v=0;v<N;v++)for(let i=0;i<T;i++)
@@ -603,10 +690,11 @@ const C={solar:css.getPropertyValue('--solar').trim(),stmac:css.getPropertyValue
   pt:css.getPropertyValue('--pt').trim(),triv:css.getPropertyValue('--triv').trim(),
   ink:css.getPropertyValue('--ink').trim(),muted:css.getPropertyValue('--muted').trim(),
   faint:css.getPropertyValue('--faint').trim(),line:css.getPropertyValue('--line').trim(),
-  line2:css.getPropertyValue('--line2').trim(),panel2:css.getPropertyValue('--panel2').trim()};
+  line2:css.getPropertyValue('--line2').trim(),panel2:css.getPropertyValue('--panel2').trim(),
+  mdv:'#7fc97f'};
 
 const state={seed:42,maskSeed:11,blockIdx:5,frac:0.10,sel:0,gapIdx:0,dataset:'real',
-  showTriv:false,showPT:true,econSrc:'paper',res:null,sweep:null,busy:false};
+  showTriv:false,showPT:true,showMDV:true,econSrc:'paper',res:null,sweep:null,busy:false};
 
 function computeCS(){const CS=[];for(let v=0;v<N;v++){const cs=new Float64Array(T);
   for(let i=0;i<T;i++)cs[i]=clearSky(v,i);CS.push(cs);}return CS;}
@@ -640,11 +728,11 @@ function loadDataset(kind){
   rb.textContent=kind==='real'?'↻ New outage draw':'↻ New weather + outage draw';
   const d=document.getElementById('disclose');
   d.innerHTML=kind==='real'
-    ?'You are looking at the <b>real 1999 Saudi NLR record</b> — 70 days ('+REALMETA.label+'), 11 stations, 5-minute GHI, embedded in this page ('+REALMETA.fillPct+'% of rows were absent from the all-valid record and were linearly interpolated before embedding). Timestamps are Saudi local clock (UTC+3); station identities were verified by solar-noon inference from the data itself; map coordinates are approximate. Full-year benchmark numbers are quoted from Table I of the paper in the panel below.'
+    ?'You are looking at the <b>real 1999 Saudi NLR record</b> — 70 days ('+REALMETA.label+'), 11 stations, 5-minute GHI, embedded in this page ('+REALMETA.fillPct+'% of rows were absent from the all-valid record and were linearly interpolated before embedding). Timestamps are Saudi local clock (UTC+3); station identities were verified by solar-noon inference from the data itself; map coordinates are approximate. Full-year benchmark numbers are quoted from Table I of the paper in the panel below; this 70-day window overlaps the held-out November\u2013December period, so the live errors here are lower than the full-year ones.'
     :'The synthetic mode runs on <b>physics-based synthetic irradiance</b> — true solar geometry per station latitude/longitude plus spatially correlated moving cloud fronts — so the solver behaviour is real even though the weather is simulated. Switch to the real 1999 NLR record for the genuine article.';
   const ss=document.getElementById('sweepStatus');
   ss.textContent=kind==='real'
-    ?'Press “Run full block-length sweep” — 21 solver runs on 70 days of real data, roughly 5–15 s.'
+    ?'Press “Run full block-length sweep” — 21 solver runs on 70 days of real data, roughly 20–40 s.'
     :'Press “Run full block-length sweep” — ~21 solver runs, a few seconds.';
 }
 const {W,Lg}=buildGraph();
@@ -767,6 +855,7 @@ function drawTS(){
   }
   line(DATA.U[v],C.solar,1.7);
   if(state.showPT)line(state.res.PT[v],C.pt,1.4,[6,4]);
+  if(state.showMDV)line(state.res.MDV[v],C.mdv,1.4,[4,3]);
   if(state.showTriv)line(state.res.STT[v],C.triv,1.2,[2,3]);
   line(state.res.STL[v],'rgba(70,213,189,0.16)',6.5);
   line(state.res.STL[v],C.stmac,2.1);
@@ -781,7 +870,8 @@ function niceTicks(lo,hi,n){
 /* ================= legend ================= */
 const SERIES=[
  {id:'truth',lab:()=>state.dataset==='real'?'Ground truth (real 1999 record)':'Ground truth (synthetic weather)',color:()=>C.solar,always:true},
- {id:'PT',lab:'Pure temporal — the collapse',color:()=>C.pt,key:'showPT'},
+ {id:'PT',lab:'Pure temporal — collapses on long gaps',color:()=>C.pt,key:'showPT'},
+ {id:'MDV',lab:'Station climatology (MDV) — the baseline to beat',color:()=>C.mdv,key:'showMDV'},
  {id:'STL',lab:'STMAC · longitude sheaf',color:()=>C.stmac,always:true},
  {id:'STT',lab:'STMAC · trivial sheaf',color:()=>C.triv,key:'showTriv'}];
 function drawLegend(){
@@ -826,25 +916,27 @@ function runScenario(cb){
     const blk=BLOCKS[state.blockIdx].s;
     const {M,frac}=buildBlockMask(blk,state.frac,state.maskSeed);
     const t0=performance.now();
-    const stl=stmac(DATA.U,M,Lg,AT,AS,true,BETA,NITER);
+    const stl=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,true,MDV_WIN,CG_TOL,CG_MAX);
     const tSolve=performance.now()-t0;
     const pt=pureTemporal(DATA.U,M,AT);
-    const stt=stmac(DATA.U,M,Lg,AT,AS,false,BETA,NITER);
-    const res={M,effFrac:frac,PT:pt,STL:stl.R,STT:stt.R,
+    const stt=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,false,MDV_WIN,CG_TOL,CG_MAX);
+    const mdv=climFill(DATA.U,M,stl.C);
+    const res={M,effFrac:frac,PT:pt,MDV:mdv,STL:stl.R,STT:stt.R,
       rPT:rmseMasked(DATA.U,DATA.CS,pt,M),
+      rMDV:rmseMasked(DATA.U,DATA.CS,mdv,M),
       rSTL:rmseMasked(DATA.U,DATA.CS,stl.R,M),
       rSTT:rmseMasked(DATA.U,DATA.CS,stt.R,M),
-      ms:tSolve,patterns:stl.patterns};
+      ms:tSolve,iters:stl.iters};
     state.res=res;
     document.getElementById('bSolve').textContent=fmtMs(tSolve);
-    document.getElementById('bPat').textContent=res.patterns;
+    document.getElementById('bPat').textContent=res.iters;
     document.getElementById('effLine').textContent='effective missing: '+(100*frac).toFixed(1)+'% per station ('+
       Math.max(1,Math.ceil(state.frac*T/blk))+' block'+(Math.ceil(state.frac*T/blk)>1?'s':'')+' × '+BLOCKS[state.blockIdx].lab+')';
     animateMetric('cPT',Math.round(res.rPT),' W/m²',0);
     animateMetric('cSTL',Math.round(res.rSTL),' W/m²',0);
     animateMetric('cSTT',Math.round(res.rSTT),' W/m²',0);
-    animateMetric('cAdv',res.rPT/res.rSTL,'×',1);
-    st.textContent='solved. STMAC (longitude sheaf) reconstruction: '+fmtMs(tSolve)+' for '+N+'×'+T.toLocaleString()+' cells — zero training.';
+    animateMetric('cAdv',Math.round(res.rMDV),' W/m²',0);
+    st.textContent='solved. STMAC reconstruction: '+fmtMs(tSolve)+' for '+N+'×'+T.toLocaleString()+' cells, '+res.iters+' conjugate-gradient iterations — no training, no fitted model.';
     state.gapIdx=0;
     updateChartHead();drawTS();updateInterp();updateEcon();
     state.busy=false;
@@ -855,27 +947,24 @@ function updateInterp(){
   const el=document.getElementById('liveInterp');
   if(!state.res||!el)return;
   const r=state.res,bl=BLOCKS[state.blockIdx];
-  const hours=bl.s*5/60,cycles=hours/24,ratio=r.rPT/r.rSTL,gain=r.rSTT-r.rSTL;
+  const hours=bl.s*5/60,cycles=hours/24;
+  const dPT=r.rPT-r.rSTL,dCL=r.rMDV-r.rSTL,gain=r.rSTT-r.rSTL;
   let s;
   if(hours<6){
-    s='At <b>'+bl.lab+'</b> blocks the gap is far shorter than one diurnal cycle, so a station\u2019s own recent history is highly informative \u2014 pure-temporal smoothing is competitive ('
-      +'<b>'+Math.round(r.rPT)+'</b> vs <b>'+Math.round(r.rSTL)+' W/m\u00b2</b>'
-      +(ratio<1?') and even wins here. This matches the paper: <span class="hl">STMAC\u2019s advantage begins at the \u2248 6 h crossover</span> \u2014 push the block length up to see it.':').');
+    s='At <b>'+bl.lab+'</b> blocks the gap is far shorter than one diurnal cycle, so a station\u2019s own recent history is highly informative. Pure temporal reaches <b>'+Math.round(r.rPT)+' W/m\u00b2</b> against <b>'+Math.round(r.rSTL)+'</b> for STMAC'
+      +(dPT<0?', and wins this scenario \u2014 the paper reports the same for gaps up to 2 hours.':'.');
   }else if(hours<24){
-    s='A <b>'+bl.lab+'</b> block removes a large share of a diurnal cycle. Temporal smoothing starts flattening into a straight bridge across the gap, while STMAC pulls the true shape from neighbouring stations \u2014 <span class="hl">'+ratio.toFixed(1)+'\u00d7 lower error</span> in this run (<b>'+Math.round(r.rSTL)+'</b> vs <b>'+Math.round(r.rPT)+' W/m\u00b2</b>).';
+    s='A <b>'+bl.lab+'</b> block removes a large share of a diurnal cycle. Temporal smoothing flattens into a straight bridge across the gap (<b>'+Math.round(r.rPT)+' W/m\u00b2</b>), while STMAC reaches <b>'+Math.round(r.rSTL)+'</b> by correcting the diurnal climatology with what the neighbouring stations saw.';
   }else{
-    s='A <b>'+bl.lab+'</b> outage swallows <b>'+Math.round(cycles)+'</b> full diurnal cycle'+(cycles>=2?'s':'')+'. No smoothness prior can invent '+Math.round(cycles)+' missing sunrise\u2013noon\u2013sunset arcs, so pure temporal collapses to <b>'+Math.round(r.rPT)+' W/m\u00b2</b>; STMAC rebuilds them from the neighbour graph at <b>'+Math.round(r.rSTL)+' W/m\u00b2</b> \u2014 <span class="hl">'+ratio.toFixed(1)+'\u00d7 better</span>.';
+    s='A <b>'+bl.lab+'</b> outage swallows <b>'+Math.round(cycles)+'</b> full diurnal cycle'+(cycles>=2?'s':'')+'. No smoothness prior can invent '+Math.round(cycles)+' missing sunrise\u2013noon\u2013sunset arcs, so pure temporal reaches <b>'+Math.round(r.rPT)+' W/m\u00b2</b>; STMAC rebuilds them at <b>'+Math.round(r.rSTL)+'</b>.';
   }
-  if(gain>0.5){
-    s+=' The longitude sheaf beats the trivial sheaf by <b>'+gain.toFixed(0)+' W/m\u00b2</b> here: aligning stations to solar time before coupling removes the systematic east\u2013west phase error.';
-  }else if(gain>=-0.5){
-    s+=' Trivial and longitude sheaves land within <b>'+Math.abs(gain).toFixed(1)+' W/m\u00b2</b> of each other in this draw \u2014 on a network only \u224840 solar-minutes wide the alignment gain is real but modest, exactly as the paper reports (2\u20134 W/m\u00b2).';
-  }else{
-    s+=' In this particular draw the trivial sheaf edges the longitude sheaf by <b>'+Math.abs(gain).toFixed(1)+' W/m\u00b2</b> \u2014 individual outage draws vary; across the full sweep the solar-time-aligned sheaf wins on average. Try \u201cNew outage draw\u201d.';
-  }
-  if(state.frac>=0.12){
-    s+=' At <b>'+Math.round(state.frac*100)+'%</b> outage the distinct mask patterns multiply (<b>'+r.patterns+'</b> cached factorisations) yet the solve stays in milliseconds \u2014 pattern-grouped caching at work.';
-  }
+  s+=' The station climatology alone scores <b>'+Math.round(r.rMDV)+' W/m\u00b2</b> here';
+  if(dCL>3)s+=', so the spatial coupling is worth <span class="hl">'+dCL.toFixed(1)+' W/m\u00b2</span> on top of it.';
+  else if(dCL>=0)s+=' \u2014 on a gap this long the diurnal prior does nearly all of the work, and the spatial correction adds only <b>'+dCL.toFixed(1)+' W/m\u00b2</b>.';
+  else s+=' and edges STMAC by <b>'+Math.abs(dCL).toFixed(1)+' W/m\u00b2</b> in this draw; across the 20 mask realisations of the paper STMAC stays below it at every block length.';
+  if(gain>0.3)s+=' Aligning stations to solar time before coupling is worth <b>'+gain.toFixed(1)+' W/m\u00b2</b> against the trivial sheaf here.';
+  else s+=' Trivial and longitude sheaves land within <b>'+Math.abs(gain).toFixed(2)+' W/m\u00b2</b> of each other in this draw; the paper finds the alignment significant only for gaps up to 6 hours.';
+  s+=' Solved in <b>'+r.iters+'</b> conjugate-gradient iterations.';
   el.innerHTML=s;
 }
 function updateChartHead(){
@@ -894,11 +983,13 @@ function runSweep(){
     if(k>=BLOCKS.length){
       state.sweep=rows;drawSweep();
       const f=rows[0],g=rows[rows.length-1];
-      let xo='6–12 h';
+      let xo='none in this draw';
       for(const r of rows){if(r.sl<r.pt){xo=r.lab;break;}}
+      let win=0;for(const r of rows)if(r.sl<r.mdv)win++;
       st.textContent='done — '+(BLOCKS.length*3)+' solver runs. From 30-min to 7-day blocks, pure-temporal error grew ×'
         +(g.pt/f.pt).toFixed(0)+' while STMAC grew ×'+(g.sl/f.sl).toFixed(1)
-        +'. Crossover at '+xo+': beyond it a station’s own history cannot supply whole missing diurnal cycles — only its neighbours, glued by the sheaf, can.';
+        +'. Pure temporal stays ahead until '+xo+'. STMAC is below the station climatology at '+win+' of '+rows.length
+        +' block lengths; on multi-day gaps the two nearly coincide, because the diurnal prior is doing most of the work.';
       btn.disabled=false;state.busy=false;return;
     }
     const bl=BLOCKS[k];
@@ -906,9 +997,11 @@ function runSweep(){
     setTimeout(()=>{
       const {M,frac}=buildBlockMask(bl.s,state.frac,state.maskSeed);
       const pt=rmseMasked(DATA.U,DATA.CS,pureTemporal(DATA.U,M,AT),M);
-      const sl=rmseMasked(DATA.U,DATA.CS,stmac(DATA.U,M,Lg,AT,AS,true,BETA,NITER).R,M);
-      const sT=rmseMasked(DATA.U,DATA.CS,stmac(DATA.U,M,Lg,AT,AS,false,BETA,NITER).R,M);
-      rows.push({lab:bl.lab,pt,sl,st:sT,frac});
+      const jl=stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,true,MDV_WIN,CG_TOL,CG_MAX);
+      const sl=rmseMasked(DATA.U,DATA.CS,jl.R,M);
+      const sT=rmseMasked(DATA.U,DATA.CS,stmacJoint(DATA.U,M,Lg,R_RATIO,RIDGE,false,MDV_WIN,CG_TOL,CG_MAX).R,M);
+      const md=rmseMasked(DATA.U,DATA.CS,climFill(DATA.U,M,jl.C),M);
+      rows.push({lab:bl.lab,pt,mdv:md,sl,st:sT,frac});
       k++;drawSweep(rows);step();
     },30);
   }
@@ -920,7 +1013,7 @@ function drawSweep(partial){
   const {ctx,w,h}=setupCanvas(cv);
   const L=74,R=14,Tp=16,B=34;const pw=w-L-R,ph=h-Tp-B;
   let lo=1e9,hi=0;
-  for(const r of rows){lo=Math.min(lo,r.pt,r.sl,r.st);hi=Math.max(hi,r.pt,r.sl,r.st);}
+  for(const r of rows){lo=Math.min(lo,r.pt,r.sl,r.st,r.mdv);hi=Math.max(hi,r.pt,r.sl,r.st,r.mdv);}
   lo=Math.max(1,lo*0.7);hi*=1.4;
   const Y=val=>Tp+ph-(Math.log10(val)-Math.log10(lo))/(Math.log10(hi)-Math.log10(lo))*ph;
   const X=i=>L+(i+0.5)/BLOCKS.length*pw;
@@ -954,12 +1047,14 @@ function drawSweep(partial){
     rows.forEach((r,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(X(i),Y(get(r)),3.4,0,7);ctx.fill();});
   }
   curve(r=>r.pt,C.pt,1.6,[6,4]);
+  curve(r=>r.mdv,C.mdv,1.6,[4,3]);
   curve(r=>r.st,C.triv,1.3,[2,3]);
   curve(r=>r.sl,C.stmac,2.2);
   if(rows.length===BLOCKS.length){
     const g=rows[rows.length-1],f=rows[0];
     ctx.fillStyle=C.pt;ctx.fillText('pure temporal ×'+(g.pt/f.pt).toFixed(0)+' growth',L+8,Y(g.pt)-10);
     ctx.fillStyle=C.stmac;ctx.fillText('STMAC ×'+(g.sl/f.sl).toFixed(1),L+8,Y(g.sl)+18);
+    ctx.fillStyle=C.mdv;ctx.fillText('station climatology ×'+(g.mdv/f.mdv).toFixed(1),L+8,Y(g.mdv)-10);
   }
 }
 
@@ -974,21 +1069,28 @@ function updateEcon(){
   document.getElementById('outVal').textContent=Math.round(out*100)+'%';
   let methods;
   if(state.econSrc==='paper'||!state.res){
-    methods=[{lab:'Pure temporal',R:PAPER.pt,c:C.pt},{lab:'Transformer (trained)',R:PAPER.tf,c:'#c9a2ff'},
-             {lab:'STMAC trivial',R:PAPER.stt,c:C.triv},{lab:'STMAC longitude',R:PAPER.stl,c:C.stmac}];
+    methods=[{lab:'Pure temporal (not physical)',R:PAPER.pt,c:C.pt},{lab:'Transformer (trained)',R:PAPER.tf,c:'#c9a2ff'},
+             {lab:'Station climatology (MDV)',R:PAPER.mdv,c:C.mdv},{lab:'STMAC',R:PAPER.stmac,c:C.stmac}];
   }else{
     methods=[{lab:'Pure temporal',R:state.res.rPT,c:C.pt},
-             {lab:'STMAC trivial',R:state.res.rSTT,c:C.triv},
-             {lab:'STMAC longitude',R:state.res.rSTL,c:C.stmac}];
+             {lab:'Station climatology (MDV)',R:state.res.rMDV,c:C.mdv},
+             {lab:'STMAC · trivial sheaf',R:state.res.rSTT,c:C.triv},
+             {lab:'STMAC · longitude sheaf',R:state.res.rSTL,c:C.stmac}];
   }
-  const base=methods[0],best=methods[methods.length-1];
-  const save=(cost(gw,base.R,pen,out)-cost(gw,best.R,pen,out))/1e6;
-  document.getElementById('saveNum').textContent='$'+(save>=100?save.toFixed(0):save.toFixed(1))+'M';
+  const best=methods[methods.length-1];
+  const clim=methods.find(m=>m.lab.indexOf('climatology')>=0)||methods[0];
+  const tf=methods.find(m=>m.lab.indexOf('Transformer')>=0);
+  const cST=cost(gw,best.R,pen,out)/1e6;
+  document.getElementById('saveNum').textContent='$'+(cST>=100?cST.toFixed(0):cST.toFixed(1))+'M';
   const ei=document.getElementById('econInterp');
   if(ei){
-    const cPT=cost(gw,base.R,pen,out)/1e6,cST=cost(gw,best.R,pen,out)/1e6;
-    const perDollar=(gw*1000*((base.R-best.R)/1000)*out*4380)/1e6;
-    ei.innerHTML='At <b>'+gw+' GW</b> deployed and <b>$'+pen+'/MWh</b> penalties with <b>'+Math.round(out*100)+'%</b> sensor outage, the conventional pipeline burns <b>$'+ (cPT>=100?cPT.toFixed(0):cPT.toFixed(1)) +'M/yr</b> in avoidable imbalance cost; STMAC cuts this to <b>$'+ (cST>=100?cST.toFixed(0):cST.toFixed(1)) +'M/yr</b>. Each extra <b>$1/MWh</b> of penalty raises the annual value of accurate reconstruction by \u2248 <span class="hl">$'+perDollar.toFixed(1)+'M</span>.';
+    const cCL=cost(gw,clim.R,pen,out)/1e6;
+    const dCL=cCL-cST;
+    let txt='At <b>'+gw+' GW</b> deployed, <b>$'+pen+'/MWh</b> penalties and <b>'+Math.round(out*100)+'%</b> sensor outage, the reconstruction error of STMAC prices at <b>$'+(cST>=100?cST.toFixed(0):cST.toFixed(1))+'M/yr</b> under Eq. (7). The station climatology costs <b>$'+(cCL>=100?cCL.toFixed(0):cCL.toFixed(1))+'M/yr</b>, so the gap between them is <span class="hl">$'+dCL.toFixed(1)+'M/yr</span> — small, because at multi-day gaps the two methods differ by only a few W/m\u00b2.';
+    if(tf){const cTF=cost(gw,tf.R,pen,out)/1e6;
+      txt+=' The trained Transformer costs <b>$'+(cTF>=100?cTF.toFixed(0):cTF.toFixed(1))+'M/yr</b>, <b>$'+(cTF-cST).toFixed(1)+'M/yr</b> above STMAC.';}
+    txt+=' The pure-temporal row is a reference only: its RMSE exceeds the physical irradiance range.';
+    ei.innerHTML=txt;
   }
   // bars
   const cv=document.getElementById('costChart');
@@ -1006,47 +1108,12 @@ function updateEcon(){
     ctx.beginPath();ctx.roundRect(0,y,bw,bh,5);ctx.fill();ctx.globalAlpha=1;
     ctx.fillStyle=C.ink;ctx.fillText('$'+(cM>=100?cM.toFixed(0):cM.toFixed(1))+'M/yr',bw+8,y+bh/2+4);
   });
-  drawTornado();
 }
-function drawTornado(){
-  const cv=document.getElementById('tornado');
-  const {ctx,w,h}=setupCanvas(cv);
-  ctx.clearRect(0,0,w,h);
-  const base={gw:40,pen:3,out:0.10,hd:4380,Rb:1960,Rm:205};
-  const sv=p=>p.gw*1000*((p.Rb-p.Rm)/1000)*p.out*p.hd*p.pen/1e6;
-  const b0=sv(base);
-  const params=[
-    {lab:'Penalty ($/MWh)',k:'pen',lo:1,hi:10},
-    {lab:'Outage fraction',k:'out',lo:0.05,hi:0.15},
-    {lab:'Deployment (GW)',k:'gw',lo:30,hi:58.7},
-    {lab:'Baseline RMSE',k:'Rb',lo:1500,hi:2200},
-    {lab:'Daylight h/yr',k:'hd',lo:3800,hi:4900},
-    {lab:'Method RMSE',k:'Rm',lo:150,hi:280}];
-  const rows=params.map(p=>{
-    const a={...base};a[p.k]=p.lo;const vLo=sv(a);
-    const c={...base};c[p.k]=p.hi;const vHi=sv(c);
-    return {lab:p.lab,lo:Math.min(vLo,vHi),hi:Math.max(vLo,vHi)};
-  }).sort((x,y)=>(y.hi-y.lo)-(x.hi-x.lo));
-  const vmin=Math.min(...rows.map(r=>r.lo)),vmax=Math.max(...rows.map(r=>r.hi));
-  const L2=118,R2=10;
-  const X=val=>L2+(val-vmin)/(vmax-vmin)*(w-L2-R2);
-  const bh=Math.min(22,(h-30)/rows.length-10);
-  ctx.font='10.5px "IBM Plex Mono",monospace';
-  rows.forEach((r,i)=>{
-    const y=12+i*(bh+14);
-    ctx.fillStyle=C.muted;ctx.fillText(r.lab,0,y+bh/2+4);
-    ctx.fillStyle='rgba(255,182,72,.55)';
-    ctx.beginPath();ctx.roundRect(X(r.lo),y,Math.max(2,X(r.hi)-X(r.lo)),bh,4);ctx.fill();
-  });
-  ctx.strokeStyle=C.stmac;ctx.setLineDash([4,3]);ctx.lineWidth=1.4;
-  ctx.beginPath();ctx.moveTo(X(b0),4);ctx.lineTo(X(b0),h-16);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle=C.stmac;ctx.fillText('base $'+b0.toFixed(0)+'M',Math.min(X(b0)+5,w-80),h-4);
-}
-
 function buildSweepLegend(){
   const el=document.getElementById('sweepLegend');el.innerHTML='';
   const items=[
     ['Pure temporal — per-station smoothing, no spatial info',C.pt,'dash'],
+    ['Station climatology (MDV) — mean diurnal cycle, ±15 days',C.mdv,'dash'],
     ['STMAC · trivial sheaf — graph coupling, no time alignment',C.triv,'dot'],
     ['STMAC · longitude sheaf — proposed, solar-time aligned',C.stmac,'solid']];
   for(const [lab,col,styl] of items){
