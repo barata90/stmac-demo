@@ -2,7 +2,8 @@
 
 **Interactive, in-browser companion to the IEEE SUSTAIN 2026 paper:**
 *Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
-Framework for Saudi Vision 2030* — Amrin Barata, BPS-Statistics Indonesia.
+Framework for Saudi Vision 2030* — Amrin Barata, Faculty of Mathematics and Natural
+Sciences, Universitas Syiah Kuala.
 
 **Live demo:** https://barata90.github.io/stmac-demo/
 
@@ -36,12 +37,13 @@ this way.
   weights are r = 1000 and γ = 3, the pair selected in the paper by block cross-validation;
   the page also lets you move both knobs to see what the selection is protecting against.
 - **Pure-temporal baseline** — banded Cholesky on `diag(M) + αt·D₂ᵀD₂` per station, αt = 10.
-- Live **block-length sweep** reproducing the shape of Fig. 1, and the **Vision 2030 cost
-  model** of Eq. (7).
+- Live **block-length sweep** reproducing the shape of Fig. 1(a), and the **Vision 2030 cost
+  model** of Eq. (7), with an RMSE-source toggle between the live run, the paper's full-year
+  figures averaged over the seven block lengths, and the cloudy-cell subset of Section V-F.
 
-The JavaScript solver was checked against the Python reference implementation
-(`stmac_joint.py`) on the embedded window with an identical mask: same RMSE to six
-decimals, maximum difference 1.5 × 10⁻¹¹ W/m² on the reconstructed cells.
+The JavaScript code implements the same solver as the Python reference
+(`stmac_joint.py`). No numerical agreement figure is quoted here or in the paper, because
+no comparison log is shipped in this repository.
 
 ## Live numbers vs. the paper's Table I
 
@@ -55,8 +57,11 @@ block lengths, against 61 to 99 W/m² in the paper.
 The structure carries over. Pure temporal is the most accurate method for gaps up to about
 two hours and then collapses by an order of magnitude or more. The station climatology is
 nearly flat across block lengths. STMAC stays below the climatology on short and medium
-gaps, and the two converge on multi-day gaps, where the diurnal prior does most of the work
-and the spatial correction adds only a few W/m². Trivial and longitude sheaves differ by a
+gaps, and on all cells the two converge on multi-day gaps, where the diurnal prior does most
+of the work and the spatial correction adds only a few W/m². Split by sky condition that
+convergence disappears: on cloudy cells (11.7% of the evaluation, daily clear-sky index at
+most 0.70) STMAC stays 9.1 to 180.1 W/m² below the climatology at every block length, while
+on clear cells the margin is no longer significant beyond a day. Trivial and longitude sheaves differ by a
 fraction of a W/m² in a single draw; the paper finds the alignment significant only for gaps
 up to six hours.
 
@@ -78,7 +83,9 @@ preserved from the runs that produced the paper's numbers. Notebook `12` contain
 corrected joint solver, the rerun of every experiment against it, and the baselines added
 during the camera-ready revision (station climatology, held-out Transformer evaluation).
 Notebook `12b` holds the sheaf ablation inside the climatology formulation and the
-per-network weight selection on the satellite field. The earlier notebooks record the
+per-network weight selection on the satellite field. Notebook `13` rebuilds the paper figure
+from the stored CSVs and cross-checks every number quoted in the manuscript against its
+artefact. The earlier notebooks record the
 experiments as they were first run and are kept for provenance; where their numbers differ
 from the paper, notebooks `12` and `12b` are the ones that produced the published values.
 See `notebooks/README.md` for the pipeline map and data availability.

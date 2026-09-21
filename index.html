@@ -122,7 +122,7 @@ table.ref td.win{color:var(--stmac);font-weight:600}
 .headline-save{margin:14px 0 6px}
 .headline-save .num{font-family:var(--mono);font-size:38px;font-weight:600;color:var(--solar);line-height:1}
 .headline-save .lbl{font-size:12.5px;color:var(--muted);margin-top:6px}
-.src-toggle{display:flex;gap:7px;margin-top:14px}
+.src-toggle{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .bars-lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
 
 /* ---------- footer ---------- */
@@ -329,12 +329,12 @@ footer{border-top:1px solid transparent;
         <tr><td>3 day</td><td>1,904</td><td>166.2</td><td>250.7</td><td class="win">163.3</td></tr>
         <tr><td>7 day</td><td>4,961</td><td>169.1</td><td>251.8</td><td class="win">166.5</td></tr>
       </table>
-      <p class="ref-cap">Teal marks the lowest error in the row. Pure temporal wins gaps up to 2 hours and then collapses; STMAC is lowest from 6 hours on, but its margin over the station climatology narrows from 72 W/m² at 30 minutes to 2.6 W/m² at 7 days. On the held-out November–December period (30 masks) STMAC runs 61 to 99 W/m² against 106 to 139 for the Transformer.</p>
+      <p class="ref-cap">Teal marks the lowest error in the row. Pure temporal wins gaps up to 2 hours and then collapses; STMAC is lowest from 6 hours on, but its margin over the station climatology narrows from 72 W/m² at 30 minutes to 2.6 W/m² at 7 days. Split by sky condition the picture changes: on cloudy cells STMAC stays 9.1 to 180.1 W/m² below the climatology at every block length, while on clear cells the margin is no longer significant beyond a day. On the held-out November–December period (30 masks) STMAC runs 61 to 99 W/m² against 106 to 139 for the Transformer.</p>
     </div>
 
     <div class="panel">
       <h2>Block-length sweep — the headline figure, live</h2>
-      <p class="cap">Reproduces the shape of Fig. 1: hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: on short gaps a station's own history suffices, so pure temporal wins; once gaps span whole diurnal cycles no smoothness prior can invent them, and the work passes to the diurnal climatology plus the spatial correction that STMAC adds to it.</p>
+      <p class="cap">Reproduces the shape of Fig. 1(a): hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: on short gaps a station's own history suffices, so pure temporal wins; once gaps span whole diurnal cycles no smoothness prior can invent them, and the work passes to the diurnal climatology plus the spatial correction that STMAC adds to it.</p>
       <canvas id="sweepChart" height="330"></canvas>
       <div class="series-legend" id="sweepLegend"></div>
       <div class="status" id="sweepStatus"></div>
@@ -348,7 +348,7 @@ footer{border-top:1px solid transparent;
       <div>
         <div class="ctl-group">
           <div class="ctl-label">Deployed solar capacity</div>
-          <div class="slider-row"><input type="range" id="gwSlider" min="20" max="60" step="0.5" value="40"><span class="slider-val" id="gwVal">40 GW</span></div>
+          <div class="slider-row"><input type="range" id="gwSlider" min="20" max="60" step="0.1" value="40"><span class="slider-val" id="gwVal">40 GW</span></div>
         </div>
         <div class="ctl-group">
           <div class="ctl-label">Imbalance penalty</div>
@@ -361,7 +361,8 @@ footer{border-top:1px solid transparent;
         <div class="ctl-group">
           <div class="ctl-label">RMSE source</div>
           <div class="src-toggle">
-            <button class="chip" id="srcPaper">Paper Table I (full year, 3-day blocks)</button>
+            <button class="chip" id="srcPaper">Paper Table II (full year, all block lengths)</button>
+            <button class="chip" id="srcCloudy">Paper Table II · cloud-dominated stress year</button>
             <button class="chip on" id="srcLive">This live run (updates with every simulation)</button>
           </div>
         </div>
@@ -378,12 +379,14 @@ footer{border-top:1px solid transparent;
       <div>
         <div class="bars-lbl">This simulation, in plain words (updates with every run)</div>
         <ul class="ref-list" id="econLive"><li>Run a scenario to see the live reading.</li></ul>
-        <div class="bars-lbl" style="margin-top:16px">What the paper reports (Table II: full year, 20 masks, 3-day blocks)</div>
+        <div class="bars-lbl" style="margin-top:16px">What the paper reports (Table II: full year, 20 masks, averaged over the seven block lengths)</div>
         <ul class="ref-list">
-          <li>The pure-temporal bar is a reference, not an operating baseline. Its RMSE at a 3-day gap (1,904 W/m²) exceeds the physical range of sunlight; clipping its output to [0, 1400] W/m² already brings it to 658.</li>
-          <li>The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $4.6M to $20.2M per year across the paper's three scenarios (40 GW at $3/MWh, 52.7 GW at $5/MWh, 52.7 GW at $10/MWh).</li>
-          <li>Against the station climatology, STMAC saves $0.2M to $0.7M per year, because at 3-day gaps the two differ by only 3 W/m².</li>
-          <li>Replacing RMSE by mean absolute error, or by deadband, tiered and asymmetric settlement, lowers every bar by 38% to 73% and leaves the ordering unchanged. A tiered rate of twice the base raises it by 20%, so Eq. (7) is a first-order estimate, not a bound.</li>
+          <li>The pure-temporal bar is a reference, not an operating baseline. Averaged over the seven block lengths its RMSE is 1,209 W/m², and at a 3-day gap alone it reaches 1,904 W/m², beyond the physical range of sunlight; clipping its output to [0, 1400] W/m² brings that to 658.</li>
+          <li>The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $3.3M to $14.6M per year across the paper's three scenarios (40 GW at $3/MWh, 52.7 GW at $5/MWh, 52.7 GW at $10/MWh). The Transformer is the only method with a training period and the full-year figures include it, which can only lower its error, so this margin is conservative. On the held-out window, where all three methods fall by nearly the same factor (0.59, 0.59, 0.61), the margin is $1.8M to $7.9M over the Transformer and $0.4M to $1.7M over the climatology.</li>
+          <li>Against the station climatology, STMAC saves $0.9M to $3.9M per year, because averaged over the sweep the two differ by 16.8 W/m². Restricted to cloudy cells the difference is 46.5 W/m² and the saving becomes $2.4M to $10.7M, a cloud-dominated stress year rather than a share of the all-cell figure; at 3-day gaps alone it narrows to 2.9 W/m² and $0.2M to $0.7M. Use the source toggle above to move between the three.</li>
+          <li>Replacing RMSE by mean absolute error, or by deadband, tiered and asymmetric settlement, lowers every bar by 38% to 73% and leaves the ordering unchanged. A tiered rate of twice the base above a 15% deviation raises it by 20%, so Eq. (7) is a first-order estimate, not a bound.</li>
+          <li>Eq. (7) prices one narrow stream, so all of these figures are a lower bound on operational value. Reserve sizing, curtailment avoidance, the financing risk premium on resource-data quality, and the observability of newly commissioned stations that have no history for a learned model are left unpriced.</li>
+          <li>The value grows with network density. On the 2019 satellite field the margin over the climatology, priced at 52.7 GW and $10/MWh, rises from $3.5M to $5.0M per year between 11 and 50 sites, so an added monitoring site is worth about $69k per year at first and about $21k per year near 50 sites. That planning curve is still to be re-measured on K.A.CARE ground data.</li>
         </ul>
       </div>
     </div>
@@ -406,10 +409,10 @@ footer{border-top:1px solid transparent;
 </section>
 <footer><div class="wrap">
   <div class="cite">A. Barata, “Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
-  Framework for Saudi Vision 2030,” submitted to IEEE SUSTAIN 2026, KFUPM, Saudi Arabia.</div>
+  Framework for Saudi Vision 2030,” IEEE SUSTAIN 2026, KFUPM, Saudi Arabia, 2026.</div>
   <div>Everything on this page — the diurnal climatology, the sheaf-Laplacian spatial coupling, the longitude
   time-shift restriction maps and the exact banded-Cholesky solve of the sparse space-time system — runs client-side
-  in JavaScript, and reproduces the Python reference to within 10⁻¹⁰ W/m² on the same mask.
+  in JavaScript and implements the same solver as the Python reference.
   That is the point: a method with no training loop can live anywhere, including inside this page.
   Supports UN SDG 7 · 9 · 13. Source code and the complete analysis notebooks: <a href="https://github.com/barata90/stmac-demo">github.com/barata90/stmac-demo</a>.</div>
 </div></footer>
@@ -462,9 +465,13 @@ const AT=10.0;                    /* smoothing weight of the pure-temporal basel
 /* STMAC weights: ratio r and ridge g, selected once by block cross-validation
    on observed cells of the full 1999 record (Section IV-D of the paper) */
 const R_RATIO=1000, RIDGE=3, MDV_WIN=15;
-const R_CHOICES=[10,100,1000,10000], G_CHOICES=[0,0.3,1,3,10];
-/* Paper, Table I, 3-day blocks, full-year means over 20 mask realisations (W/m2) */
-const PAPER={pt:1904, tf:251, mdv:166, stmac:163};
+const R_CHOICES=[10,100,1000,10000], G_CHOICES=[0,0.3,1,3,10,30];
+/* Paper, Table II basis: full-year means over 20 masks, averaged over the seven block
+   lengths (W/m2). Cloudy-cell means come from the ten shared masks of Section V-F;
+   the Transformer and pure-temporal baselines were not evaluated on that subset. */
+const PAPER={pt:1208.6, tf:210.2, mdv:163.7, stmac:146.9,
+             mdvCloudy:292.5, stmacCloudy:246.0,
+             mdv3d:166.2, stmac3d:163.3, pt3d:1904};
 
 /* ================= physics: clear sky + clouds ================= */
 function clearSky(v,i){
@@ -1120,7 +1127,10 @@ function updateEcon(){
   document.getElementById('penVal').textContent='$'+pen+'/MWh';
   document.getElementById('outVal').textContent=Math.round(out*100)+'%';
   let methods;
-  if(state.econSrc==='paper'||!state.res){
+  if(state.econSrc==='cloudy'){
+    methods=[{lab:'Station climatology (MDV) \u00b7 cloudy cells',R:PAPER.mdvCloudy,c:C.mdv},
+             {lab:'STMAC \u00b7 cloudy cells',R:PAPER.stmacCloudy,c:C.stmac}];
+  }else if(state.econSrc==='paper'||!state.res){
     methods=[{lab:'Pure temporal (not physical)',R:PAPER.pt,c:C.pt},{lab:'Transformer (trained)',R:PAPER.tf,c:'#c9a2ff'},
              {lab:'Station climatology (MDV)',R:PAPER.mdv,c:C.mdv},{lab:'STMAC',R:PAPER.stmac,c:C.stmac}];
   }else{
@@ -1138,15 +1148,23 @@ function updateEcon(){
   if(ei){
     const cCL=cost(gw,clim.R,pen,out)/1e6;
     const dCL=cCL-cST;
-    let txt='At <b>'+gw+' GW</b> deployed, <b>$'+pen+'/MWh</b> penalties and <b>'+Math.round(out*100)+'%</b> sensor outage, the reconstruction error of STMAC prices at <b>$'+(cST>=100?cST.toFixed(0):cST.toFixed(1))+'M/yr</b> under Eq. (7). The station climatology costs <b>$'+(cCL>=100?cCL.toFixed(0):cCL.toFixed(1))+'M/yr</b>, so the gap between them is <span class="hl">$'+dCL.toFixed(1)+'M/yr</span> — small, because at multi-day gaps the two methods differ by only a few W/m\u00b2.';
+    let txt='At <b>'+gw+' GW</b> deployed, <b>$'+pen+'/MWh</b> penalties and <b>'+Math.round(out*100)+'%</b> sensor outage, the reconstruction error of STMAC prices at <b>$'+(cST>=100?cST.toFixed(0):cST.toFixed(1))+'M/yr</b> under Eq. (7). The station climatology costs <b>$'+(cCL>=100?cCL.toFixed(0):cCL.toFixed(1))+'M/yr</b>, so the gap between them is <span class="hl">$'+dCL.toFixed(1)+'M/yr</span>'
+      +(state.econSrc==='cloudy'
+        ? ' — on cloudy cells the two methods differ by 46.5 W/m\u00b2, against 12.8 W/m\u00b2 on clear cells, so this is where the spatial correction earns its keep.'
+        : state.econSrc==='paper'
+        ? ' — averaged over the seven block lengths the two differ by 16.8 W/m\u00b2; at 3-day gaps alone it narrows to 2.9 W/m\u00b2, and on cloudy cells it widens to 46.5 W/m\u00b2.'
+        : ' — at multi-day gaps the two methods differ by only a few W/m\u00b2, at short gaps by far more.');
     if(tf){const cTF=cost(gw,tf.R,pen,out)/1e6;
       txt+=' The trained Transformer costs <b>$'+(cTF>=100?cTF.toFixed(0):cTF.toFixed(1))+'M/yr</b>, <b>$'+(cTF-cST).toFixed(1)+'M/yr</b> above STMAC.';}
-    txt+=' The pure-temporal row is a reference only: its RMSE exceeds the physical irradiance range.';
-    if(state.econSrc==='paper'&&state.res){
+    if(methods.some(m=>m.lab.indexOf('Pure temporal')>=0))
+      txt+=' The pure-temporal row is a reference only: its RMSE exceeds the physical irradiance range.';
+    if(state.econSrc==='cloudy')
+      txt+=' These bars apply the errors measured on cloudy cells at full capacity and full outage fraction, so they describe a cloud-dominated stress year and are not a share of the all-cell figure. Cloudy cells are 11.7% of the evaluated data (daily clear-sky index at most 0.70); the Transformer and pure-temporal baselines were not run on this subset, so only the two methods above are priced.';
+    if(state.econSrc!=='live'&&state.res){
       const cL=cost(gw,state.res.rSTL,pen,out)/1e6,cM=cost(gw,state.res.rMDV,pen,out)/1e6;
       txt+=' <b>Your current scenario</b> ('+BLOCKS[state.blockIdx].lab+' blocks, live 70-day window): STMAC '+Math.round(state.res.rSTL)+' W/m\u00b2 \u2192 $'+cL.toFixed(1)+'M/yr; climatology '+Math.round(state.res.rMDV)+' W/m\u00b2 \u2192 $'+cM.toFixed(1)+'M/yr at these market settings.';
     }else if(state.res){
-      txt+=' These live figures come from the '+BLOCKS[state.blockIdx].lab+' scenario you just ran on the 70-day window, so they move every time you change the block length, outage fraction, mask or weights; switch to the paper source for the full-year Table I figures at 3-day blocks.';
+      txt+=' These live figures come from the '+BLOCKS[state.blockIdx].lab+' scenario you just ran on the 70-day window, so they move every time you change the block length, outage fraction, mask or weights; switch to the paper source for the full-year Table II figures averaged over the seven block lengths.';
     }
     ei.innerHTML=txt;
   }
@@ -1172,8 +1190,8 @@ function updateEcon(){
       else items.push('<b>STMAC against the climatology:</b> the two are within $'+Math.abs(d).toFixed(2)+'M/yr of each other. On a gap this long the diurnal prior does most of the work, and the spatial correction adds little.');
       items.push('<b>STMAC against pure temporal:</b> $'+fm(pt.c-st.c)+'M/yr apart. Read this as a warning about naive smoothing rather than as a saving: at '+bl.lab+' blocks pure temporal reaches '+Math.round(pt.R)+' W/m\u00b2'+(pt.R>1400?', beyond the physical range of sunlight':'')+'.');
       const gs=r.rSTT-r.rSTL;
-      items.push('<b>Solar-time alignment:</b> the longitude sheaf is '+(gs>0.05?gs.toFixed(2)+' W/m\u00b2 better than':gs<-0.05?(-gs).toFixed(2)+' W/m\u00b2 worse than':'within '+Math.abs(gs).toFixed(2)+' W/m\u00b2 of')+' the trivial sheaf here, worth $'+Math.abs(gs*perW).toFixed(3)+'M/yr. The paper finds the alignment significant only for gaps up to 6 hours.');
-      if(state.dataset==='real')items.push('<b>Why these figures are lower than the paper\u2019s:</b> Table II uses full-year means over 20 masks at 3-day blocks (STMAC 163 W/m\u00b2). This page runs one mask on a 70-day winter window with weaker sunlight, so both the errors and the dollar figures are smaller. The ordering of the methods is what carries over.');
+      items.push('<b>Solar-time alignment:</b> the longitude sheaf is '+(gs>0.05?gs.toFixed(2)+' W/m\u00b2 better than':gs<-0.05?(-gs).toFixed(2)+' W/m\u00b2 worse than':'within '+Math.abs(gs).toFixed(2)+' W/m\u00b2 of')+' the trivial sheaf here, worth $'+Math.abs(gs*perW).toFixed(3)+'M/yr. The paper finds the alignment significant only for gaps up to 6 hours, worth 1.59, 1.06 and 0.30 W/m\u00b2 at 30 minutes, 2 hours and 6 hours.');
+      if(state.dataset==='real')items.push('<b>Why these figures are lower than the paper\u2019s:</b> Table II uses full-year means over 20 masks averaged across the seven block lengths (STMAC 147 W/m\u00b2). This page runs one mask on a 70-day winter window with weaker sunlight, so both the errors and the dollar figures are smaller. The ordering of the methods is what carries over.');
       items.push('<b>What to try next:</b> shorten the block to 30 min or 2 h and pure temporal becomes the cheapest; lengthen it to 3 or 7 days and the climatology catches up with STMAC; double the penalty rate and every bar doubles; set \u03b3 = 0 to see what removing the pull toward climatology does on long gaps.');
       lv.innerHTML=items.map(t=>'<li>'+t+'</li>').join('');
     }
@@ -1271,14 +1289,17 @@ document.getElementById('prevGap').addEventListener('click',()=>{
 document.getElementById('nextGap').addEventListener('click',()=>{
   if(!state.res)return;const g=gapsOf(state.sel).length;if(!g)return;
   state.gapIdx=(state.gapIdx+1)%g;drawTS();});
-document.getElementById('srcPaper').addEventListener('click',()=>{
-  state.econSrc='paper';
-  document.getElementById('srcPaper').classList.add('on');
-  document.getElementById('srcLive').classList.remove('on');updateEcon();});
-document.getElementById('srcLive').addEventListener('click',()=>{
-  state.econSrc='live';
-  document.getElementById('srcLive').classList.add('on');
-  document.getElementById('srcPaper').classList.remove('on');updateEcon();});
+function setEconSrc(src){
+  state.econSrc=src;
+  for(const [id,key] of [['srcPaper','paper'],['srcCloudy','cloudy'],['srcLive','live']]){
+    const el=document.getElementById(id);
+    if(el)el.classList.toggle('on',key===src);
+  }
+  updateEcon();
+}
+document.getElementById('srcPaper').addEventListener('click',()=>setEconSrc('paper'));
+document.getElementById('srcCloudy').addEventListener('click',()=>setEconSrc('cloudy'));
+document.getElementById('srcLive').addEventListener('click',()=>setEconSrc('live'));
 ['gwSlider','penSlider','outSlider'].forEach(id=>
   document.getElementById(id).addEventListener('input',updateEcon));
 let rsz;window.addEventListener('resize',()=>{clearTimeout(rsz);
