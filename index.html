@@ -257,15 +257,15 @@ h1{background:linear-gradient(92deg,#fff 12%,var(--gold-hi) 42%,var(--teal) 68%,
 h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:none}
 @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 
-/* Panels get luxe glass + edge glow + 3D tilt readiness */
+/* Panels get luxe glass + edge glow (no 3D tilt) */
 .panel,details.guide{
-  transform-style:preserve-3d;will-change:transform;
   border:1px solid rgba(212,175,55,.18)!important;
   background:linear-gradient(148deg,rgba(18,22,32,.82),rgba(10,13,20,.68))!important;
   box-shadow:0 30px 70px -34px rgba(0,0,0,.9),
              inset 0 1px rgba(255,255,255,.06),
              inset 0 0 0 1px rgba(212,175,55,.04);
   position:relative;overflow:hidden;
+  transition:border-color .3s ease,box-shadow .3s ease;
 }
 .panel::before,details.guide::before{
   content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
@@ -278,10 +278,9 @@ h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-cl
 @keyframes ringGold{to{--ang:360deg}}
 .panel::after{
   content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-  background:radial-gradient(400px 220px at var(--mx,50%) var(--my,0%),rgba(212,175,55,.14),transparent 55%);
-  opacity:0;transition:opacity .35s ease;
+  background:radial-gradient(600px 300px at 50% 0%,rgba(212,175,55,.06),transparent 60%);
+  opacity:.7;
 }
-.panel:hover::after{opacity:1}
 .panel:hover{border-color:rgba(212,175,55,.38)!important;
   box-shadow:0 40px 90px -34px rgba(0,0,0,.95),
              0 0 0 1px rgba(212,175,55,.15),
@@ -321,13 +320,11 @@ h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-cl
 .btn.primary:hover{color:#fff!important;border-color:var(--gold-hi)!important;
   box-shadow:0 0 0 1px rgba(212,175,55,.4),0 20px 46px -18px rgba(212,175,55,.55)}
 
-/* Cards: 3D depth on hover */
-.card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s,border-color .35s;
+/* Cards: static luxury, no tilt */
+.card{transition:box-shadow .35s,border-color .35s;
   border:1px solid rgba(212,175,55,.14);position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;inset:0;background:radial-gradient(220px 160px at var(--mx,50%) var(--my,50%),rgba(212,175,55,.18),transparent 60%);opacity:0;transition:opacity .3s}
-.card:hover{transform:translateY(-3px) rotateX(2deg);border-color:rgba(212,175,55,.4);
-  box-shadow:0 24px 48px -22px rgba(0,0,0,.9),0 0 0 1px rgba(212,175,55,.15)}
-.card:hover::before{opacity:1}
+.card:hover{border-color:rgba(212,175,55,.35);
+  box-shadow:0 20px 40px -22px rgba(0,0,0,.9),0 0 0 1px rgba(212,175,55,.12)}
 .card .val{background:linear-gradient(90deg,#f5d76e,#00f5d4);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 14px rgba(212,175,55,.18))}
 
@@ -343,17 +340,13 @@ h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-cl
   transform:rotateX(56deg) rotateZ(-32deg);animation:ringSpin 22s linear infinite}
 .hero-stage .orbit-b i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 14px var(--gold);left:70%;top:4%}
 
-/* Custom cursor (two-part) */
-#cursor,#cursor-dot{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;
-  transform:translate(-50%,-50%);will-change:transform;mix-blend-mode:screen}
-#cursor{width:32px;height:32px;border:1.5px solid rgba(212,175,55,.7);border-radius:50%;
-  box-shadow:0 0 20px rgba(212,175,55,.4),inset 0 0 12px rgba(212,175,55,.25);
-  transition:width .2s ease,height .2s ease,border-color .2s ease,background .2s ease,opacity .2s;backdrop-filter:blur(2px)}
-#cursor-dot{width:5px;height:5px;background:var(--teal);border-radius:50%;box-shadow:0 0 10px var(--teal),0 0 2px #fff}
-#cursor.hover{width:56px;height:56px;border-color:var(--teal);background:rgba(0,245,212,.08);
-  box-shadow:0 0 30px rgba(0,245,212,.45),inset 0 0 16px rgba(0,245,212,.3)}
-#cursor.click{transform:translate(-50%,-50%) scale(.7)}
-@media(pointer:coarse){#cursor,#cursor-dot{display:none}}
+/* Custom cursor — single dot, no lag */
+#cursor-dot{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;
+  width:8px;height:8px;background:var(--gold-hi);border-radius:50%;
+  box-shadow:0 0 12px var(--gold),0 0 3px #fff;
+  transform:translate3d(-50%,-50%,0);will-change:transform;mix-blend-mode:screen}
+#cursor-dot.hover{background:var(--teal);box-shadow:0 0 14px var(--teal),0 0 3px #fff}
+@media(pointer:coarse){#cursor-dot{display:none}}
 
 /* Selection */
 ::selection{background:rgba(212,175,55,.35);color:#fff}
@@ -363,13 +356,8 @@ h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-cl
 .reveal.pending{opacity:0;transform:translateY(24px) scale(.985)}
 .reveal.in{opacity:1;transform:none}
 
-/* Sound toggle */
-#sfx-toggle{position:fixed;right:18px;bottom:18px;z-index:9998;background:rgba(16,20,29,.85);
-  border:1px solid rgba(212,175,55,.35);color:var(--gold-hi);border-radius:999px;padding:9px 14px;font-family:var(--mono);font-size:11px;
-  letter-spacing:.14em;text-transform:uppercase;cursor:none;backdrop-filter:blur(10px);
-  box-shadow:0 12px 28px -14px rgba(0,0,0,.9);transition:transform .2s,border-color .2s,color .2s}
-#sfx-toggle:hover{transform:translateY(-2px);border-color:var(--gold);color:#fff}
-#sfx-toggle.off{opacity:.55;color:var(--muted);border-color:rgba(148,163,184,.3)}
+/* Sound toggle — removed */
+#sfx-toggle{display:none}
 
 /* Live pulse dot in badge */
 .badge .dot{background:var(--teal)!important;box-shadow:0 0 0 0 rgba(0,245,212,.6)!important;animation:pulseDot 1.9s ease-out infinite}
@@ -378,8 +366,8 @@ h1 .thin{background:linear-gradient(90deg,#cbd5e1,#94a3b8);-webkit-background-cl
 /* Range slider tint */
 input[type=range]{accent-color:var(--gold)}
 
-/* Slight parallax on hero stage from mouse */
-.hero-stage{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .18s ease-out}
+/* Hero stage stays static — no mouse parallax */
+.hero-stage{transition:none}
 
 /* Table hover row glow */
 table.ref tr:hover{background:linear-gradient(90deg,rgba(212,175,55,.06),rgba(0,245,212,.06))!important}
@@ -396,9 +384,7 @@ table.ref td.win{color:var(--teal);text-shadow:0 0 16px rgba(0,245,212,.55)}
 <canvas id="fx-bg" data-testid="fx-3d-background"></canvas>
 <div id="fx-aurora" aria-hidden="true"></div>
 <div id="fx-grain" aria-hidden="true"></div>
-<div id="cursor" aria-hidden="true"></div>
 <div id="cursor-dot" aria-hidden="true"></div>
-<button id="sfx-toggle" class="off" data-testid="sfx-toggle" aria-pressed="false">♪ sound off</button>
 <header data-testid="app-header"><div class="wrap">
   <div class="eyebrow">IEEE SUSTAIN 2026 <span>·</span> Interactive companion to the paper <span>·</span> KFUPM, Nov 29 – Dec 2, 2026</div>
   <div class="hero-layout"><div>
@@ -1518,12 +1504,12 @@ runScenario();
 </script>
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script>
-/* ================= Luxury 3D FX Layer ================= */
+/* ================= Luxury 3D FX Layer (v2: static-friendly) ================= */
 (function(){
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarse = matchMedia('(pointer: coarse)').matches;
 
-  /* ---------- Three.js starfield + gold particles + subtle wave ---------- */
+  /* ---------- Three.js particle backdrop — auto-animated only ---------- */
   if(!reduce && window.THREE){
     const canvas = document.getElementById('fx-bg');
     const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
@@ -1534,11 +1520,9 @@ runScenario();
     const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 200);
     camera.position.set(0, 0, 22);
 
-    /* particle field — mostly white, some gold, few teal */
-    const COUNT = Math.min(1400, Math.floor((innerWidth*innerHeight)/1600));
+    const COUNT = Math.min(1200, Math.floor((innerWidth*innerHeight)/1800));
     const positions = new Float32Array(COUNT*3);
     const colors = new Float32Array(COUNT*3);
-    const speeds = new Float32Array(COUNT);
     const c1 = new THREE.Color(0xffffff);
     const c2 = new THREE.Color(0xd4af37);
     const c3 = new THREE.Color(0x00f5d4);
@@ -1552,50 +1536,31 @@ runScenario();
       const roll = Math.random();
       const c = roll<0.72 ? c1 : roll<0.94 ? c2 : c3;
       colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
-      speeds[i] = 0.02 + Math.random()*0.09;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
-    const mat = new THREE.PointsMaterial({size:0.09, vertexColors:true, transparent:true, opacity:0.9,
+    const mat = new THREE.PointsMaterial({size:0.09, vertexColors:true, transparent:true, opacity:0.85,
       depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true});
     const pts = new THREE.Points(geo, mat);
     scene.add(pts);
 
-    /* glowing gold torus (subtle ring) */
     const torus = new THREE.Mesh(
       new THREE.TorusGeometry(9, 0.05, 8, 220),
-      new THREE.MeshBasicMaterial({color:0xd4af37, transparent:true, opacity:0.28, blending:THREE.AdditiveBlending})
+      new THREE.MeshBasicMaterial({color:0xd4af37, transparent:true, opacity:0.26, blending:THREE.AdditiveBlending})
     );
-    torus.rotation.x = 1.15;
-    torus.position.set(6, -3, -8);
+    torus.rotation.x = 1.15; torus.position.set(6, -3, -8);
     scene.add(torus);
-
     const torus2 = new THREE.Mesh(
       new THREE.TorusGeometry(6.5, 0.03, 8, 180),
       new THREE.MeshBasicMaterial({color:0x00f5d4, transparent:true, opacity:0.22, blending:THREE.AdditiveBlending})
     );
-    torus2.rotation.x = -0.6; torus2.rotation.z = 0.4;
-    torus2.position.set(-7, 4, -10);
+    torus2.rotation.x = -0.6; torus2.rotation.z = 0.4; torus2.position.set(-7, 4, -10);
     scene.add(torus2);
-
-    /* mouse parallax */
-    let mx=0, my=0, tmx=0, tmy=0;
-    addEventListener('mousemove', e=>{
-      tmx = (e.clientX/innerWidth - .5);
-      tmy = (e.clientY/innerHeight - .5);
-    }, {passive:true});
-    /* scroll offset */
-    let scrollY = 0;
-    addEventListener('scroll', ()=>{ scrollY = window.scrollY; }, {passive:true});
 
     let t = 0;
     function tick(){
       t += 0.005;
-      mx += (tmx-mx)*0.06; my += (tmy-my)*0.06;
-      camera.position.x = mx*1.8;
-      camera.position.y = -my*1.4 - scrollY*0.002;
-      camera.lookAt(0,0,0);
       pts.rotation.y = t*0.05;
       pts.rotation.x = Math.sin(t*0.4)*0.05;
       torus.rotation.z = t*0.15;
@@ -1612,105 +1577,18 @@ runScenario();
     });
   }
 
-  /* ---------- Panel 3D tilt + gold spotlight follow ---------- */
-  const tilt = (el, maxDeg=4)=>{
-    let raf=0;
-    el.addEventListener('mousemove', e=>{
-      const r = el.getBoundingClientRect();
-      const px = (e.clientX - r.left)/r.width;
-      const py = (e.clientY - r.top)/r.height;
-      const rx = (0.5-py)*maxDeg;
-      const ry = (px-0.5)*maxDeg;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(()=>{
-        el.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
-        el.style.setProperty('--mx', (px*100).toFixed(2)+'%');
-        el.style.setProperty('--my', (py*100).toFixed(2)+'%');
-      });
-    });
-    el.addEventListener('mouseleave', ()=>{ el.style.transform=''; });
-  };
-  if(!coarse){
-    document.querySelectorAll('.panel, details.guide').forEach(el=>tilt(el,3.2));
-    document.querySelectorAll('.card').forEach(el=>tilt(el,5));
-  }
-
-  /* ---------- Hero stage parallax ---------- */
-  const stage = document.getElementById('heroStage');
-  if(stage && !coarse){
-    addEventListener('mousemove', e=>{
-      const rx = (0.5 - e.clientY/innerHeight)*10;
-      const ry = (e.clientX/innerWidth - 0.5)*14;
-      stage.style.setProperty('--rx', rx.toFixed(2)+'deg');
-      stage.style.setProperty('--ry', ry.toFixed(2)+'deg');
-    }, {passive:true});
-  }
-
-  /* ---------- Custom cursor ---------- */
-  const cur = document.getElementById('cursor');
+  /* ---------- Custom cursor: single dot, direct follow (no lag) ---------- */
   const dot = document.getElementById('cursor-dot');
-  if(cur && !coarse){
-    let x=innerWidth/2,y=innerHeight/2,tx=x,ty=y;
-    addEventListener('mousemove', e=>{ tx=e.clientX; ty=e.clientY;
-      dot.style.transform = `translate(${tx}px,${ty}px) translate(-50%,-50%)`;
+  if(dot && !coarse){
+    addEventListener('mousemove', e=>{
+      dot.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0) translate(-50%,-50%)`;
     }, {passive:true});
-    function loop(){
-      x += (tx-x)*0.22; y += (ty-y)*0.22;
-      cur.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%)`;
-      requestAnimationFrame(loop);
-    }
-    loop();
     const hoverSel = 'button,a,.chip,.btn,input[type=range],summary,.card,.badge';
     document.querySelectorAll(hoverSel).forEach(el=>{
-      el.addEventListener('mouseenter', ()=>cur.classList.add('hover'));
-      el.addEventListener('mouseleave', ()=>cur.classList.remove('hover'));
+      el.addEventListener('mouseenter', ()=>dot.classList.add('hover'));
+      el.addEventListener('mouseleave', ()=>dot.classList.remove('hover'));
     });
-    document.addEventListener('mousedown', ()=>cur.classList.add('click'));
-    document.addEventListener('mouseup', ()=>cur.classList.remove('click'));
   }
-
-  /* ---------- Subtle sound effects (Web Audio, no assets) ---------- */
-  const SFX = { on:false, ctx:null };
-  const sfxBtn = document.getElementById('sfx-toggle');
-  function ensureCtx(){ if(!SFX.ctx) SFX.ctx = new (window.AudioContext||window.webkitAudioContext)(); return SFX.ctx; }
-  function beep(freq, dur=0.08, type='sine', gain=0.045){
-    if(!SFX.on) return;
-    try{
-      const ctx = ensureCtx();
-      if(ctx.state==='suspended') ctx.resume();
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = type; o.frequency.value = freq;
-      g.gain.value = 0;
-      g.gain.linearRampToValueAtTime(gain, ctx.currentTime+0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+dur);
-      o.connect(g).connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime+dur+0.02);
-    }catch(e){}
-  }
-  sfxBtn?.addEventListener('click', ()=>{
-    SFX.on = !SFX.on;
-    sfxBtn.classList.toggle('off', !SFX.on);
-    sfxBtn.setAttribute('aria-pressed', SFX.on ? 'true':'false');
-    sfxBtn.textContent = SFX.on ? '♪ sound on' : '♪ sound off';
-    if(SFX.on){ ensureCtx(); beep(880,0.09,'triangle',0.06); setTimeout(()=>beep(1320,0.09,'triangle',0.05),90); }
-  });
-  document.addEventListener('click', e=>{
-    const t = e.target.closest('button,.chip,.btn,summary');
-    if(!t || t.id==='sfx-toggle') return;
-    if(t.classList.contains('primary')) beep(660,0.11,'triangle',0.06);
-    else if(t.classList.contains('chip')) beep(t.classList.contains('on')?740:520,0.06,'sine',0.04);
-    else beep(600,0.05,'sine',0.035);
-  });
-  document.querySelectorAll('input[type=range]').forEach(r=>{
-    let last=0;
-    r.addEventListener('input', ()=>{
-      const now=performance.now();
-      if(now-last<45) return; last=now;
-      beep(420 + Number(r.value)*4, 0.03, 'sine', 0.022);
-    });
-  });
-
-  /* ---------- Scroll reveal (disabled — content shows immediately) ---------- */
 })();
 </script>
 </body>
