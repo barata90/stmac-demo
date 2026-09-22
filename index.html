@@ -6,7 +6,7 @@
 <title>STMAC — Live Reconstruction Console · IEEE SUSTAIN 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0f1626; --panel:#171f37; --panel2:#1b2542; --line:#28324f; --line2:#334063;
@@ -211,15 +211,29 @@ table.ref td.win{text-shadow:0 0 14px rgba(70,213,189,.4)}
 footer{border-top:1px solid transparent;
   border-image:linear-gradient(90deg,transparent,#3a4a75 30%,#3a4a75 70%,transparent) 1}
 </style>
+<style id="immersive-premium">
+:root{--bg:#07090e;--panel:#10141d;--panel2:#151b26;--line:#26303e;--line2:#3a4658;--ink:#f8fafc;--muted:#94a3b8;--faint:#64748b;--solar:#d4af37;--stmac:#00f5d4;--pt:#fb7185;--triv:#94a3b8;--disp:'Outfit',sans-serif;--body:'Outfit',sans-serif}
+body{background-color:var(--bg);background-image:linear-gradient(rgba(212,175,55,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,.035) 1px,transparent 1px),radial-gradient(900px 520px at 92% -8%,rgba(0,245,212,.12),transparent 64%),radial-gradient(780px 560px at -12% 18%,rgba(212,175,55,.10),transparent 62%);background-size:48px 48px,48px 48px,auto,auto}
+header{padding:26px 0 28px;background:linear-gradient(180deg,rgba(7,9,14,.82),rgba(7,9,14,.35));overflow:hidden}header .wrap{position:relative}
+.eyebrow{color:var(--stmac);font-size:10px;letter-spacing:.22em}.eyebrow span{color:var(--faint)}h1{font-size:clamp(42px,7vw,82px);letter-spacing:-.055em;line-height:.93;text-shadow:0 0 50px rgba(0,245,212,.12)}h1 .thin{color:#cbd5e1}.sub{font-size:15px;line-height:1.65;color:#a9b5c8}
+.hero-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:40px;align-items:center;margin-top:24px}.hero-stage{min-height:260px;position:relative;perspective:900px;display:grid;place-items:center;isolation:isolate}.hero-stage::before{content:'';position:absolute;width:270px;height:270px;border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.7),rgba(0,245,212,.45) 10%,rgba(0,245,212,.07) 42%,transparent 68%);box-shadow:0 0 90px rgba(0,245,212,.22),inset -25px -20px 60px rgba(0,0,0,.48);transform:rotateX(10deg) rotateY(-18deg);animation:orbFloat 7s ease-in-out infinite}.hero-stage::after{content:'';position:absolute;width:360px;height:92px;border:1px solid rgba(212,175,55,.42);border-radius:50%;transform:rotateX(68deg) rotateZ(-16deg);box-shadow:0 0 34px rgba(212,175,55,.16);animation:ringSpin 13s linear infinite}.hero-orbit{position:relative;width:310px;height:180px;border:1px solid rgba(0,245,212,.35);border-radius:50%;transform:rotateX(66deg) rotateZ(18deg);animation:ringSpin 16s linear infinite reverse;z-index:1}.hero-orbit i{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--solar);box-shadow:0 0 18px var(--solar);left:20%;top:5%}.hero-caption{position:absolute;right:2%;bottom:7%;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);z-index:2}
+@keyframes orbFloat{0%,100%{transform:translateY(4px) rotateX(10deg) rotateY(-18deg)}50%{transform:translateY(-12px) rotateX(16deg) rotateY(-8deg)}}@keyframes ringSpin{to{transform:rotateX(66deg) rotateZ(378deg)}}
+.console-strip{position:relative;z-index:2;gap:8px}.badge{background:rgba(16,20,29,.76);border-color:rgba(212,175,55,.18);backdrop-filter:blur(14px);border-radius:4px;padding:10px 13px}.badge b{color:var(--ink)}
+main{gap:22px;padding-top:26px}.panel,details.guide{background:linear-gradient(145deg,rgba(16,20,29,.88),rgba(12,17,25,.76));border:1px solid rgba(148,163,184,.16);border-radius:8px;box-shadow:0 22px 60px -32px #000,inset 0 1px rgba(255,255,255,.05);backdrop-filter:blur(14px);transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease}.panel:hover{border-color:rgba(212,175,55,.28);box-shadow:0 28px 70px -38px #000,inset 0 1px rgba(255,255,255,.07)}.panel h2{font-size:18px}.panel h2::before{height:3px;width:42px;background:linear-gradient(90deg,var(--stmac),var(--solar));box-shadow:0 0 15px rgba(0,245,212,.35)}
+.chip,.btn{border-radius:3px;background:rgba(21,27,38,.82);border-color:rgba(148,163,184,.22);transition:transform .2s ease,border-color .2s ease,background-color .2s ease,box-shadow .2s ease}.chip:hover,.btn:hover{transform:translateY(-2px);border-color:var(--solar);box-shadow:0 8px 20px -12px rgba(212,175,55,.7)}.chip.on,.btn.primary{background:rgba(0,245,212,.09);border-color:var(--stmac);color:var(--stmac);box-shadow:0 0 18px rgba(0,245,212,.11)}.card{border-radius:5px;background:linear-gradient(145deg,rgba(26,34,47,.92),rgba(12,17,25,.84));padding:16px;box-shadow:inset 0 1px rgba(255,255,255,.06)}.card .val{font-size:30px}.map-legend,.series-legend{font-family:var(--mono);font-size:10px;letter-spacing:.03em}.disclose{border-color:var(--solar);background:rgba(212,175,55,.055)}
+@media(max-width:820px){.hero-layout{grid-template-columns:1fr;gap:6px}.hero-stage{min-height:170px;transform:scale(.78);margin:-22px 0}.hero-caption{right:12%;bottom:0}.console-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.badge{font-size:11px}.badge.contrast{grid-column:1/-1}h1{font-size:clamp(42px,14vw,68px)}}
+</style>
 </head>
 <body>
-<header><div class="wrap">
+<header data-testid="app-header"><div class="wrap">
   <div class="eyebrow">IEEE SUSTAIN 2026 <span>·</span> Interactive companion to the paper <span>·</span> KFUPM, Nov 29 – Dec 2, 2026</div>
-  <h1>STMAC <span class="thin">— live reconstruction console</span></h1>
-  <p class="sub">Training-free solar resource reconstruction via cellular sheaves. Break the Saudi sensor
+  <div class="hero-layout"><div>
+  <h1 data-testid="hero-title">STMAC <span class="thin">— live reconstruction console</span></h1>
+  <p class="sub" data-testid="hero-description">Training-free solar resource reconstruction via cellular sheaves. Break the Saudi sensor
   network with realistic block outages, then watch the sheaf solver repair it — right here, in your browser.
   No GPU, no training data, no learned weights — and the default dataset is 70 days of the <b>real 1999
-  Saudi NLR record</b>, embedded in this very page. The solver here is the one in the paper: a single sparse space-time system on departures from each station's diurnal climatology.</p>
+  Saudi NLR record</b>, embedded in this very page. The solver here is the one in the paper: a single sparse space-time system on departures from each station's diurnal climatology.</p></div>
+  <div class="hero-stage" id="heroStage" data-testid="hero-3d-visual" aria-label="Abstract 3D solar network visualization"><div class="hero-orbit"><i></i></div><span class="hero-caption">space · time · signal</span></div></div>
   <div class="console-strip">
     <div class="badge solve" title="Wall-clock time for the full STMAC reconstruction of the current scenario, measured live in your browser"><span class="dot"></span>Last solve <b id="bSolve">—</b></div>
     <div class="badge" title="STMAC learns nothing in advance: no training set, no learned weights, no GPU — the paper’s central claim">Trained parameters <b>0</b></div>
@@ -1305,9 +1319,27 @@ document.getElementById('srcLive').addEventListener('click',()=>setEconSrc('live
 let rsz;window.addEventListener('resize',()=>{clearTimeout(rsz);
   rsz=setTimeout(()=>{drawTS();drawSweep();updateEcon();},150);});
 
+/* Premium interaction layer: subtle parallax on the 3D hero, disabled for touch/reduced motion. */
+const heroStage=document.getElementById('heroStage');
+if(heroStage&&!reduceMotion&&window.matchMedia('(pointer:fine)').matches){
+  heroStage.addEventListener('pointermove',e=>{const r=heroStage.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+    heroStage.style.transform='rotateX('+(-y*8).toFixed(2)+'deg) rotateY('+(x*10).toFixed(2)+'deg)';
+  });
+  heroStage.addEventListener('pointerleave',()=>{heroStage.style.transform='';});
+}
+/* Keep the single-file demo easy to test as controls are rebuilt during live runs. */
+function stampTestIds(){
+  document.querySelectorAll('button,input,details,[role="button"],canvas,svg').forEach((el,i)=>{
+    if(!el.dataset.testid){const raw=(el.id||el.getAttribute('aria-label')||el.textContent||el.tagName).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');el.dataset.testid=raw+'-'+i;}
+  });
+}
+const uxObserver=new MutationObserver(stampTestIds);uxObserver.observe(document.body,{childList:true,subtree:true});
+
 /* ================= boot ================= */
 loadDataset('real');
 drawMap();buildDsChips();buildChips();drawLegend();buildSweepLegend();updateChartHead();
+stampTestIds();
 runScenario();
 </script>
 </body>
