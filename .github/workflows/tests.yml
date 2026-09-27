@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Solver and UI tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # full history: the performance report compares with the single-file page at 473edc3
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Solver and UI tests
+        run: npm test
+      - name: Performance report (informational, does not gate)
+        if: success()
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/single-file"
+          git show 473edc3:index.html > "$RUNNER_TEMP/single-file/index.html"
+          node perf.mjs --compare "$RUNNER_TEMP/single-file/index.html"
