@@ -1137,9 +1137,11 @@ function openPop(btn) {
   if (popFor === btn) { closePop(); return; }
   closePop();
   pop.querySelector('.pop-body').innerHTML = popHTML(kind); pop.hidden = false; popFor = btn; btn.setAttribute('aria-expanded', 'true');
-  const rc = btn.getBoundingClientRect(), pw = pop.offsetWidth, vw = document.documentElement.clientWidth;
+  /* open below the whole badge strip so the popover never covers another badge */
+  const rc = btn.getBoundingClientRect(), strip = (btn.closest('.console-strip') || btn).getBoundingClientRect();
+  const pw = pop.offsetWidth, vw = document.documentElement.clientWidth;
   const left = Math.max(12, Math.min(rc.left + window.scrollX, window.scrollX + vw - pw - 12));
-  pop.style.left = left + 'px'; pop.style.top = (rc.bottom + window.scrollY + 8) + 'px';
+  pop.style.left = left + 'px'; pop.style.top = (strip.bottom + window.scrollY + 8) + 'px';
   scheduleStamp();
 }
 function closePop() { if (!popFor) return; popFor.setAttribute('aria-expanded', 'false'); popFor = null; pop.hidden = true; }

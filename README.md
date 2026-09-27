@@ -138,6 +138,13 @@ block-length sweep is spread over up to three extra workers, so the page stays r
 while the factorisations run. When workers are unavailable the same code runs on the main
 thread.
 
+## Tests
+
+`tests/` holds the regression suite: a differential test that runs the original single-file
+solver next to the refactored one and requires bit-for-bit agreement, browser tests for every
+interactive reading, and an informational performance report. It runs in GitHub Actions on
+every pull request; see `tests/README.md` to run it locally.
+
 ## Run / deploy
 
 - **Locally:** serve the folder, for example `python3 -m http.server 8000`, and open
