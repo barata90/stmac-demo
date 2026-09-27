@@ -17,7 +17,7 @@
 :root{
   --bg:#07090e;--panel:#10141d;--panel2:#151b26;--line:#26303e;--line2:#3a4658;
   --ink:#f8fafc;--muted:#94a3b8;--faint:#64748b;
-  --solar:#d4af37;--stmac:#00f5d4;--pt:#fb7185;--triv:#94a3b8;--mdv:#7fc97f;--tf:#c9a2ff;
+  --solar:#d4af37;--stmac:#00f5d4;--pt:#fb7185;--triv:#94a3b8;--mdv:#7fc97f;--tf:#c9a2ff;--s0:#60a5fa;
   --gold:#d4af37;--gold-hi:#f5d76e;--gold-glow:rgba(212,175,55,.42);--teal:#00f5d4;--teal-glow:rgba(0,245,212,.35);
   --disp:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;
   --body:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -228,13 +228,19 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .card.stt .val{color:var(--triv)}
 .card.adv .val{color:var(--mdv);text-shadow:0 0 22px rgba(127,201,127,.3)}
 .card.adv{background:linear-gradient(180deg,rgba(127,201,127,.09),rgba(127,201,127,.02))}
+.card.s0{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 16px}
+.card.s0 .val{font-size:22px;margin-top:0;color:var(--s0)}
+.card.s0 .more{position:static;align-self:center;white-space:nowrap}
 .cards.stale .card{opacity:.55}
 
 /* ---------- reference table ---------- */
 table.ref{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.8px}
 table.ref th,table.ref td{padding:5px 7px;text-align:right;border-bottom:1px solid var(--line);color:var(--muted)}
 table.ref th{color:var(--faint);font-weight:500;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+table.ref tr.grp th{text-align:center;color:var(--muted);letter-spacing:.04em;text-transform:none;font-size:10.5px;border-bottom:1px solid var(--line2)}
+table.ref .ho{border-left:1px solid var(--line2)}
 table.ref td:first-child,table.ref th:first-child{text-align:left}
+table.ref td:first-child{white-space:nowrap}
 table.ref td.win{color:var(--teal);font-weight:600;text-shadow:0 0 16px rgba(0,245,212,.55)}
 table.ref tr[data-k]{cursor:pointer;transition:background-color .15s}
 table.ref tr[data-k]:hover,table.ref tr[data-k]:focus-visible{background:linear-gradient(90deg,rgba(212,175,55,.06),rgba(0,245,212,.06));outline:none}

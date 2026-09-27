@@ -24,22 +24,31 @@ this way.
 ## What runs in the page
 
 - **Station climatology (MDV)** — for every cell, the mean of the observed values at the
-  same time of day within a ±15-day window, computed from observed cells only. STMAC
-  reconstructs departures from this prior, and the same field is drawn as a baseline curve.
+  same time of day within a ±15-day window, computed from observed cells only (Eq. 4).
+  STMAC reconstructs departures from this prior, and the same field is drawn as a baseline curve.
 - **Sheaf-Laplacian spatial coupling** — k = 3 NN graph, Gaussian weights (σ = 300 km).
-- **Longitude-sheaf restriction maps** — circular time shifts into local solar time
+- **Longitude-sheaf restriction maps** — circular time shifts into local solar time by
+  δ = (λ − λ̄)/(15°/h), measured from the network-mean longitude λ̄ as in Section III-B
   (integer-sample shifts here; the reference implementation uses FFT fractional shifts,
   a difference of at most 2.5 minutes).
 - **One joint space-time solve** — the constrained problem of Eq. (5) reduces to a sparse
   symmetric positive-definite system over the unobserved cells (Eq. 6). Ordering the
   unknowns by (time, station) makes that system banded with half-bandwidth below 2N, so
-  it is solved exactly by one banded Cholesky factorisation in 20 to 130 ms. The default
-  weights are r = 1000 and γ = 3, the pair selected in the paper by block cross-validation;
-  the page also lets you move both knobs to see what the selection is protecting against.
+  it is solved exactly by one banded Cholesky factorisation in 20 to 130 ms (the paper's
+  Python reference uses sparse LU; both give the exact solution). The default weights are
+  r = 1000 and g = 3 (the ratios r = αt/αs and g = γ/αs), the pair selected in the paper by
+  block cross-validation; the page also lets you move both knobs to see what the selection
+  is protecting against.
+- **Ablation S0** — the same joint solver without the prior (C = 0, g = 0, r = 10), the S0
+  column of Table I, run live next to STMAC.
 - **Pure-temporal baseline** — banded Cholesky on `diag(M) + αt·D₂ᵀD₂` per station, αt = 10.
-- Live **block-length sweep** reproducing the shape of Fig. 1(a), and the **Vision 2030 cost
-  model** of Eq. (7), with an RMSE-source toggle between the live run, the paper's full-year
-  figures averaged over the seven block lengths, and the cloudy-cell subset of Section V-F.
+- **Scoring** — RMSE over the removed cells at clock hours 8 to 16 inclusive (08:00 to 16:55
+  local time), the `DAYTIME` mask of the analysis notebooks; the paper describes it as
+  "between 08:00 and 16:00".
+- Live **block-length sweep** reproducing the shape of Fig. 1(a), S0 included, and the
+  **Vision 2030 cost model** of Eq. (7), with an RMSE-source toggle between the live run, the
+  paper's full-year figures averaged over the seven block lengths (Table II), and the
+  cloudy-cell subset of Section V-F.
 
 The JavaScript code implements the same solver as the Python reference
 (`stmac_joint.py`). No numerical agreement figure is quoted here or in the paper, because
@@ -47,23 +56,27 @@ no comparison log is shipped in this repository.
 
 ## Live numbers vs. the paper's Table I
 
-Numbers computed live here will not equal the full-year column of Table I. Table I averages
-20 mask realisations over the **full year** (101,805 timestamps); this page embeds a 70-day
-winter subset with lower absolute irradiance and draws a single mask at a time. That window
+The page quotes Table I in full: the full-year columns (20 masks: pure temporal, climatology,
+Transformer, S0, STMAC) and the held-out columns (7 Nov to 31 Dec 1999, 30 masks). Numbers
+computed live here will not equal the full-year column. Table I averages 20 mask
+realisations over the **full year** (101,805 timestamps); this page embeds a 70-day winter
+subset with lower absolute irradiance and draws a single mask at a time. That window
 (22 Oct – 30 Dec 1999) overlaps the **held-out period** used for the Transformer comparison,
-so the live errors sit closer to the held-out column: STMAC around 54 to 94 W/m² across
-block lengths, against 61 to 99 W/m² in the paper.
+so the live errors sit closer to the held-out column: with the default mask STMAC runs 58 to
+100 W/m² across block lengths, against 61 to 99 W/m² in the paper's held-out column.
 
 The structure carries over. Pure temporal is the most accurate method for gaps up to about
 two hours and then collapses by an order of magnitude or more. The station climatology is
 nearly flat across block lengths. STMAC stays below the climatology on short and medium
 gaps, and on all cells the two converge on multi-day gaps, where the diurnal prior does most
-of the work and the spatial correction adds only a few W/m². Split by sky condition that
-convergence disappears: on cloudy cells (11.7% of the evaluation, daily clear-sky index at
-most 0.70) STMAC stays 9.1 to 180.1 W/m² below the climatology at every block length, while
-on clear cells the margin is no longer significant beyond a day. Trivial and longitude sheaves differ by a
-fraction of a W/m² in a single draw; the paper finds the alignment significant only for gaps
-up to six hours.
+of the work and the spatial correction adds only a few W/m². Without the prior, the joint
+solver (S0) beats the climatology only at 30 minutes, as in the paper. Split by sky condition
+the convergence disappears: on cloudy cells (11.7% of the evaluation; the notebooks call a
+day cloudy at a daily clear-sky index of at most 0.70) STMAC stays 9.1 to 180.1 W/m² below
+the climatology at every block length, against 1.3 to 58.9 W/m² on clear cells, where the
+margin is not significant beyond a day. Trivial and longitude sheaves differ by a fraction of
+a W/m² in a single draw; the paper finds the alignment significant only for gaps up to six
+hours (1.59, 1.06 and 0.30 W/m² at 30 minutes, 2 hours and 6 hours).
 
 ## Data provenance
 

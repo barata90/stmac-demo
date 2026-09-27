@@ -87,7 +87,7 @@ export const insight = (page, id) => page.evaluate(id => {
 }, id);
 
 export const cardValues = page => page.evaluate(() =>
-  ['cPT', 'cSTL', 'cSTT', 'cAdv'].map(id => document.getElementById(id).querySelector('.n').textContent));
+  ['cPT', 'cSTL', 'cSTT', 'cAdv', 'cS0'].map(id => document.getElementById(id).querySelector('.n').textContent));
 
 /* The page formats integers with en-US grouping and a true minus sign. */
 export const fmt0 = x => (Math.round(x) < 0 ? '−' : '') + Math.abs(Math.round(x)).toLocaleString('en-US');

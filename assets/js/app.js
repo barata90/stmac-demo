@@ -8,22 +8,28 @@
 const Core = window.STMACCore;
 const $ = id => document.getElementById(id);
 if (!Core) { const s = $('status'); if (s) s.textContent = 'Could not load assets/js/stmac-core.js.'; return; }
-const { STATIONS, N, SPD, TZ, REALMETA, BLOCKS, R_RATIO, RIDGE, GRAPH_K, GRAPH_SIGMA, DAY_CS } = Core;
+const { STATIONS, N, SPD, TZ, REALMETA, BLOCKS, R_RATIO, RIDGE, GRAPH_K, GRAPH_SIGMA, LON_MEAN, S0_R, S0_G } = Core;
+const scored = i => Core.evalHour(i); /* 08:00-16:55 local time, the notebooks' DAYTIME mask */
+const EVAL_LAB = '08:00–16:55';
 const VERSION = '20260927';
 const R_CHOICES = [10, 100, 1000, 10000], G_CHOICES = [0, 0.3, 1, 3, 10, 30];
 /* Paper, Table II basis: full-year means over 20 masks, averaged over the seven block
    lengths (W/m2). Cloudy-cell means come from the ten shared masks of Section V-F;
    the Transformer and pure-temporal baselines were not evaluated on that subset. */
 const PAPER = { pt: 1208.6, tf: 210.2, mdv: 163.7, stmac: 146.9, mdvCloudy: 292.5, stmacCloudy: 246.0, mdv3d: 166.2, stmac3d: 163.3, pt3d: 1904 };
-/* Paper, Table I (full year, 20 masks); k = index into BLOCKS */
+/* Paper, Table I: full year (20 masks) and held-out 7 Nov to 31 Dec 1999 (30 masks), W/m2.
+   s0 = STMAC without prior (C = 0, g = 0, r = 10); ho* = held-out columns; k = index into BLOCKS. */
 const TABLE1 = [
-  { lab: '30 min', k: 0, pt: 70, mdv: 162.0, tf: 153.0, stmac: 89.6 },
-  { lab: '2 h', k: 1, pt: 114, mdv: 162.5, tf: 165.6, stmac: 140.0 },
-  { lab: '6 h', k: 2, pt: 239, mdv: 163.2, tf: 201.3, stmac: 154.4 },
-  { lab: '1 day', k: 4, pt: 727, mdv: 160.8, tf: 229.9, stmac: 157.4 },
-  { lab: '3 days', k: 5, pt: 1904, mdv: 166.2, tf: 250.7, stmac: 163.3 },
-  { lab: '7 days', k: 6, pt: 4961, mdv: 169.1, tf: 251.8, stmac: 166.5 }];
-const CLOUDY_K = 0.70;       /* paper: cloudy = daily clear-sky index at most 0.70 */
+  { lab: '30 min', k: 0, pt: 70, mdv: 162.0, tf: 153.0, s0: 114.3, stmac: 89.6, hoMdv: 96.3, hoTf: 106.4, hoS: 61.4 },
+  { lab: '2 h', k: 1, pt: 114, mdv: 162.5, tf: 165.6, s0: 182.5, stmac: 140.0, hoMdv: 94.5, hoTf: 108.8, hoS: 87.1 },
+  { lab: '6 h', k: 2, pt: 239, mdv: 163.2, tf: 201.3, s0: 192.5, stmac: 154.4, hoMdv: 97.1, hoTf: 120.1, hoS: 94.1 },
+  { lab: '12 h', k: 3, pt: 445, mdv: 162.1, tf: 219.0, s0: 194.8, stmac: 157.2, hoMdv: 91.9, hoTf: 123.4, hoS: 89.9 },
+  { lab: '1 day', k: 4, pt: 727, mdv: 160.8, tf: 229.9, s0: 195.6, stmac: 157.4, hoMdv: 96.9, hoTf: 130.2, hoS: 95.8 },
+  { lab: '3 days', k: 5, pt: 1904, mdv: 166.2, tf: 250.7, s0: 202.3, stmac: 163.3, hoMdv: 99.5, hoTf: 138.7, hoS: 98.5 },
+  { lab: '7 days', k: 6, pt: 4961, mdv: 169.1, tf: 251.8, s0: 199.6, stmac: 166.5, hoMdv: 100.1, hoTf: 137.8, hoS: 99.2 }];
+/* sky condition of a day, as in the analysis notebooks (KT_CLEAR, KT_CLOUDY): daily clear-sky
+   index at most 0.70 = cloudy, at least 0.85 = clear. The paper reports the split, not the thresholds. */
+const CLOUDY_K = 0.70, CLEAR_K = 0.85;
 const PHYS_MAX = 1400;       /* paper: clipping range [0, 1400] W/m2 */
 const SAUDI = [[34.95,29.35],[36.07,29.19],[37.00,31.50],[38.00,32.00],[39.20,32.15],[40.40,31.95],
  [41.90,31.00],[42.86,30.50],[44.72,29.20],[46.55,29.10],[47.46,29.00],[47.70,28.52],[48.42,28.55],
@@ -65,18 +71,20 @@ const css = getComputedStyle(document.documentElement);
 const cvar = n => css.getPropertyValue(n).trim();
 const C = { solar: cvar('--solar') || '#d4af37', stmac: cvar('--stmac') || '#00f5d4', pt: cvar('--pt') || '#fb7185', triv: cvar('--triv') || '#94a3b8',
   ink: cvar('--ink') || '#f8fafc', muted: cvar('--muted') || '#94a3b8', faint: cvar('--faint') || '#64748b', line: cvar('--line') || '#26303e',
-  line2: cvar('--line2') || '#3a4658', mdv: cvar('--mdv') || '#7fc97f', tf: cvar('--tf') || '#c9a2ff', goldHi: cvar('--gold-hi') || '#f5d76e' };
+  line2: cvar('--line2') || '#3a4658', mdv: cvar('--mdv') || '#7fc97f', tf: cvar('--tf') || '#c9a2ff', s0: cvar('--s0') || '#60a5fa', goldHi: cvar('--gold-hi') || '#f5d76e' };
 function rgba(hex, a) { const h = hex.replace('#', ''); const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
 const METHODS = {
   PT: { key: 'PT', lab: 'Pure temporal', short: 'Pure temporal', color: () => C.pt, show: 'showPT', r: 'rPT', card: 'cPT' },
   MDV: { key: 'MDV', lab: 'Station climatology (MDV)', short: 'Climatology', color: () => C.mdv, show: 'showMDV', r: 'rMDV', card: 'cAdv' },
   STT: { key: 'STT', lab: 'STMAC · trivial sheaf', short: 'STMAC trivial', color: () => C.triv, show: 'showTriv', r: 'rSTT', card: 'cSTT' },
-  STL: { key: 'STL', lab: 'STMAC · longitude sheaf', short: 'STMAC', color: () => C.stmac, r: 'rSTL', card: 'cSTL' } };
-const MKEYS = ['STL', 'MDV', 'PT', 'STT'];
+  STL: { key: 'STL', lab: 'STMAC · longitude sheaf', short: 'STMAC', color: () => C.stmac, r: 'rSTL', card: 'cSTL' },
+  S0: { key: 'S0', lab: 'STMAC without prior (S0)', short: 'S0 (no prior)', color: () => C.s0, show: 'showS0', r: 'rS0', card: 'cS0' } };
+const MKEYS = ['STL', 'MDV', 'PT', 'STT', 'S0'];
+const shown = k => { const sk = METHODS[k].show; return !sk || !!state[sk]; };
 
 /* ================= state ================= */
 const state = { seed: 42, maskSeed: 11, blockIdx: 5, frac: 0.10, sel: 0, gapIdx: 0, dataset: 'real',
-  showTriv: false, showPT: true, showMDV: true, econSrc: 'live', res: null, sweep: null,
+  showTriv: false, showS0: false, showPT: true, showMDV: true, econSrc: 'live', res: null, sweep: null,
   r: R_RATIO, g: RIDGE, emph: null, pin: null,
   focus: { map: null, metric: null, sweep: null, cost: null }, solveLog: [] };
 let DATA = null, GRID = Core.grid(), loadingDs = false;
@@ -177,13 +185,13 @@ async function loadDataset(kind) {
   GRID = out.grid;
   const T = GRID.T;
   DATA = { key: out.key, kind, U: views(out.U, T), CS: views(out.CS, T), loadMs: out.ms,
-    corr: { aligned: out.corrAligned, clock: out.corrClock, n: out.corrN, daily: out.corrDaily }, kDaily: out.kDaily };
+    corr: { aligned: out.corrAligned, clock: out.corrClock, n: out.corrN, daily: out.corrDaily, raw: out.corrRaw }, kDaily: out.kDaily };
   loadingDs = false;
   state.res = null; /* results of the previous dataset no longer match these arrays */
   updateChartHead(); drawTS(); renderTsInsight(); renderMetricInsight();
   const d = $('disclose');
   d.innerHTML = kind === 'real'
-    ? 'You are looking at the <b>real 1999 Saudi NLR record</b> — 70 days (' + REALMETA.label + '), 11 stations, 5-minute GHI, shipped with this page (' + REALMETA.fillPct + '% of rows were absent from the all-valid record and were linearly interpolated before embedding). Timestamps are Saudi local clock (UTC+3); station identities were verified by solar-noon inference from the data itself; map coordinates are approximate. Full-year benchmark numbers are quoted from Table I of the paper in the panel below; this 70-day window overlaps the held-out November–December period, so the live errors here are lower than the full-year ones.'
+    ? 'You are looking at the <b>real 1999 Saudi NLR record</b> — 70 days (' + REALMETA.label + '), 11 stations, 5-minute GHI, shipped with this page (' + REALMETA.fillPct + '% of rows were absent from the all-valid record and were linearly interpolated before embedding). Timestamps are Saudi local clock (UTC+3); station identities were verified by solar-noon inference from the data itself; map coordinates are approximate. Table I of the paper is quoted in the panel below; this 70-day window overlaps its held-out period (7 Nov to 31 Dec), so the live errors are closest to the held-out columns and lower than the full-year ones. Errors are scored on removed cells between 08:00 and 16:55 local time, the window of the paper’s notebooks.'
     : 'The synthetic mode runs on <b>physics-based synthetic irradiance</b> — true solar geometry per station latitude/longitude plus spatially correlated moving cloud fronts — so the solver behaviour is real even though the weather is simulated. Switch to the real 1999 NLR record for the genuine article.';
   $('sweepStatus').textContent = kind === 'real'
     ? 'Press “Run full block-length sweep” — 21 solver runs on 70 days of real data, a few seconds.'
@@ -218,8 +226,8 @@ async function pumpScenario() {
 function applyScenario(out, wall) {
   const T = GRID.T;
   const res = { params: out.params, effFrac: out.effFrac, nb: out.nb, n: out.n, bw: out.bw, ms: out.ms, tm: out.tm, wall,
-    rPT: out.rPT, rMDV: out.rMDV, rSTL: out.rSTL, rSTT: out.rSTT, stats: out.stats, T,
-    M: views(out.M, T), PT: views(out.PT, T), MDV: views(out.MDV, T), STL: views(out.STL, T), STT: views(out.STT, T), _gaps: [], _gapStats: [] };
+    rPT: out.rPT, rMDV: out.rMDV, rSTL: out.rSTL, rSTT: out.rSTT, rS0: out.rS0, stats: out.stats, T,
+    M: views(out.M, T), PT: views(out.PT, T), MDV: views(out.MDV, T), STL: views(out.STL, T), STT: views(out.STT, T), S0: views(out.S0, T), _gaps: [], _gapStats: [] };
   state.res = res;
   state.solveLog.push({ ms: out.ms, total: out.tm.total, wall });
   const bl = BLOCKS[out.params.blockIdx];
@@ -263,7 +271,7 @@ function gapStats(v, g0, g1) {
   const acc = {}; for (const k of MKEYS) acc[k] = { s: 0, b: 0 };
   let nDay = 0, su = 0, sc = 0;
   for (let i = g0; i < g1; i++) {
-    if (CS[i] <= DAY_CS) continue;
+    if (!scored(i)) continue;
     nDay++; su += U[i]; sc += CS[i];
     for (const k of MKEYS) { const d = r[k][v][i] - U[i]; acc[k].s += d * d; acc[k].b += d; }
   }
@@ -278,7 +286,7 @@ function allGapStats(v) {
 function dayIndexK(v, i) { const d = Math.floor(i / SPD); return DATA.kDaily && DATA.kDaily[v] ? DATA.kDaily[v][d] : NaN; }
 function skyPhrase(k) {
   if (!isNum(k)) return '';
-  return k <= CLOUDY_K ? 'at or below the paper’s cloudy threshold of 0.70' : 'above the paper’s cloudy threshold of 0.70';
+  return k <= CLOUDY_K ? 'a cloudy day by the notebooks’ threshold (≤ 0.70)' : k >= CLEAR_K ? 'a clear day by the notebooks’ threshold (≥ 0.85)' : 'between the notebooks’ cloudy (≤ 0.70) and clear (≥ 0.85) thresholds';
 }
 
 /* ================= canvas helpers ================= */
@@ -375,7 +383,7 @@ function updateMapSel() {
 }
 function stationTip(v) {
   const s = STATIONS[v], r = state.res;
-  let h = '<div class="t">' + stn(v) + '</div>' + tipRow('Location', s.lat.toFixed(2) + '°N ' + s.lon.toFixed(2) + '°E') + tipRow('Solar noon ≈', hm(solarNoonClock(v)) + ' clock');
+  let h = '<div class="t">' + stn(v) + '</div>' + tipRow('Location', s.lat.toFixed(2) + '°N ' + s.lon.toFixed(2) + '°E') + tipRow('Solar noon ≈', hm(solarNoonClock(v)) + ' clock') + tipRow('Sheaf shift δ', sg(Core.lonShiftMin(v), 1) + ' min');
   if (r) {
     const st = r.stats, gaps = gapsOf(v);
     let miss = 0; for (const [a, b] of gaps) miss += b - a;
@@ -419,15 +427,15 @@ function renderMapInsight(flash) {
   const A = DATA.corr.aligned, Cl = DATA.corr.clock, Dly = DATA.corr.daily;
   if (!f) {
     const ds = EDGES.map(e => e.d), ws = EDGES.map(e => e.w);
-    let se = 0, ne = 0, sn = 0, nn = 0;
-    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) { if (!isNum(A[i][j])) continue; if (W[i][j] > 0) { se += A[i][j]; ne++; } else { sn += A[i][j]; nn++; } }
+    let se = 0, ne = 0, sn = 0, nn = 0, sr = 0;
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) { if (!isNum(A[i][j])) continue; if (W[i][j] > 0) { se += A[i][j]; ne++; sr += DATA.corr.raw[i][j]; } else { sn += A[i][j]; nn++; } }
     const noons = STATIONS.map((s, v) => solarNoonClock(v)), lo = Math.min(...noons), hi = Math.max(...noons);
     const vLo = noons.indexOf(hi), vHi = noons.indexOf(lo);
     let h = '<div class="ins-grid">' + tile('Stations', N) + tile('Graph edges', EDGES.length, 'k = ' + GRAPH_K + ', symmetrised') +
       tile('Edge length', Math.round(Math.min(...ds)) + '–' + Math.round(Math.max(...ds)) + ' km', 'mean ' + Math.round(ds.reduce((a, b) => a + b, 0) / ds.length) + ' km') +
       tile('Weights w', Math.min(...ws).toFixed(2) + '–' + Math.max(...ws).toFixed(2), 'σ = ' + GRAPH_SIGMA + ' km') + '</div>';
-    h += '<p>Solar noon falls between <b>' + hm(lo) + '</b> (' + STATIONS[vHi].code + ') and <b>' + hm(hi) + '</b> (' + STATIONS[vLo].code + ') on the local clock, a spread of <b>' + Math.round(hi - lo) + ' min</b>. That offset is what the longitude sheaf removes before neighbours are compared.</p>';
-    h += '<p>In the ' + (DATA.kind === 'real' ? '70-day 1999 record' : 'synthetic weather') + ', the 5-minute departures from each station’s own climatology correlate at <b>' + f2(se / ne) + '</b> on average across graph edges and <b>' + f2(sn / nn) + '</b> across non-adjacent pairs (solar-time aligned, daytime cells). ' +
+    h += '<p>Solar noon falls between <b>' + hm(lo) + '</b> (' + STATIONS[vHi].code + ') and <b>' + hm(hi) + '</b> (' + STATIONS[vLo].code + ') on the local clock, a spread of <b>' + Math.round(hi - lo) + ' min</b>. That offset is what the longitude sheaf removes before neighbours are compared: each station is shifted by δ = (λ − λ̄)/(15°/h), measured from the network-mean longitude λ̄ = ' + LON_MEAN.toFixed(2) + '°E (Section III-B).</p>';
+    h += '<p>In the ' + (DATA.kind === 'real' ? '70-day 1999 record' : 'synthetic weather') + ', the 5-minute departures from each station’s own climatology correlate at <b>' + f2(se / ne) + '</b> on average across graph edges and <b>' + f2(sn / nn) + '</b> across non-adjacent pairs (solar-time aligned, ' + EVAL_LAB + ' cells). The raw irradiance of the same edges correlates at <b>' + f2(sr / ne) + '</b>, because every station shares the diurnal cycle; the departures remove that shared cycle. ' +
       (se / ne < 0.15 ? 'Neighbours share little signal beyond the diurnal cycle at this resolution, which limits what the spatial coupling can add over the climatology.' : se / ne < 0.4 ? 'Neighbours share a moderate part of their departures, which is the signal STMAC uses to correct the climatology.' : 'Neighbours share much of their departures, so the spatial coupling has real signal to work with.') + '</p>';
     h += '<p class="ins-hint">Hover a station or an edge for values; click one to read it. Stations and edges are also reachable with <kbd>Tab</kbd>.</p>';
     setInsight('mapInsight', { pill: 'Network overview', html: h, flash });
@@ -436,16 +444,16 @@ function renderMapInsight(flash) {
   if (f.type === 'station') {
     const v = f.v, s = STATIONS[v], sh = Core.lonShift(v), nbs = neighbours(v), r = state.res;
     let best = -1, bestR = -2; for (let u = 0; u < N; u++) if (u !== v && isNum(A[v][u]) && A[v][u] > bestR) { bestR = A[v][u]; best = u; }
-    const kd = DATA.kDaily[v]; let cloudy = 0, km = 0; for (const k of kd) { km += k; if (k <= CLOUDY_K) cloudy++; } km /= kd.length;
+    const kd = DATA.kDaily[v]; let cloudy = 0, clear = 0, km = 0; for (const k of kd) { km += k; if (k <= CLOUDY_K) cloudy++; if (k >= CLEAR_K) clear++; } km /= kd.length;
     let h = '<div class="ins-grid">';
     if (r) {
       const st = r.stats, gaps = gapsOf(v); let miss = 0; for (const [a, b] of gaps) miss += b - a;
       h += tile('STMAC', f0(st.STL.st[v].rmse) + ' W/m²', 'bias ' + sg(st.STL.st[v].bias) , C.stmac) + tile('Climatology', f0(st.MDV.st[v].rmse) + ' W/m²', 'bias ' + sg(st.MDV.st[v].bias), C.mdv) +
         tile('Pure temporal', f0(st.PT.st[v].rmse) + ' W/m²', '', C.pt) + tile('Missing', (100 * miss / r.T).toFixed(1) + '%', gaps.length + ' gap' + (gaps.length === 1 ? '' : 's') + ', ' + st.STL.st[v].n.toLocaleString('en-US') + ' scored');
     }
-    h += '</div><p><b>' + stn(v) + '</b> sits at ' + s.lat.toFixed(2) + '°N, ' + s.lon.toFixed(2) + '°E. Its solar noon is near <b>' + hm(solarNoonClock(v)) + '</b> local clock (equation of time ignored), so the longitude sheaf moves its record <b>' + Math.abs(sh * 5) + ' min ' + (sh < 0 ? 'earlier' : sh > 0 ? 'later' : '(no shift)') + '</b> (' + Math.abs(sh) + ' sample' + (Math.abs(sh) === 1 ? '' : 's') + ') before comparing it with its neighbours.</p>';
-    h += '<p>Graph neighbours: ' + nbs.map(n => '<b>' + STATIONS[n.u].code + '</b> (' + Math.round(n.d) + ' km, w = ' + n.w.toFixed(2) + ', r = ' + f2(A[v][n.u]) + ')').join(', ') + '.' + (best >= 0 ? ' Its strongest departure correlation is with <b>' + STATIONS[best].code + '</b> (r = ' + f2(bestR) + '), ' + (W[v][best] > 0 ? 'which is one of its graph neighbours.' : 'which is <b>not</b> one of its graph neighbours: the k-NN graph is built from distance alone.') : '') + ' Here r is the correlation of 5-minute departures from the climatology (solar-time aligned, daytime cells).</p>';
-    h += '<p>Over the ' + kd.length + ' days, the station received on average <b>' + (100 * km).toFixed(0) + '%</b> of the clear-sky model’s energy; <b>' + cloudy + '</b> day' + (cloudy === 1 ? '' : 's') + ' fall at or below the paper’s cloudy threshold (daily clear-sky index ≤ 0.70, computed here with this page’s simple clear-sky model).</p>';
+    h += '</div><p><b>' + stn(v) + '</b> sits at ' + s.lat.toFixed(2) + '°N, ' + s.lon.toFixed(2) + '°E, so its solar noon is near <b>' + hm(solarNoonClock(v)) + '</b> local clock (equation of time ignored). Its local solar time leads the network mean by <b>δ = ' + sg(Core.lonShiftMin(v), 1) + ' min</b>; the longitude sheaf moves its record by that amount, <b>' + Math.abs(sh * 5) + ' min ' + (sh < 0 ? 'earlier' : sh > 0 ? 'later' : '(no shift)') + '</b> here (' + Math.abs(sh) + ' whole sample' + (Math.abs(sh) === 1 ? '' : 's') + '; the reference code shifts by the exact fraction with an FFT).</p>';
+    h += '<p>Graph neighbours: ' + nbs.map(n => '<b>' + STATIONS[n.u].code + '</b> (' + Math.round(n.d) + ' km, w = ' + n.w.toFixed(2) + ', r = ' + f2(A[v][n.u]) + ')').join(', ') + '.' + (best >= 0 ? ' Its strongest departure correlation is with <b>' + STATIONS[best].code + '</b> (r = ' + f2(bestR) + '), ' + (W[v][best] > 0 ? 'which is one of its graph neighbours.' : 'which is <b>not</b> one of its graph neighbours: the k-NN graph is built from distance alone.') : '') + ' Here r is the correlation of 5-minute departures from the climatology (solar-time aligned, ' + EVAL_LAB + ' cells).</p>';
+    h += '<p>Over the ' + kd.length + ' days, the station received on average <b>' + (100 * km).toFixed(0) + '%</b> of the clear-sky model’s energy in the ' + EVAL_LAB + ' window. <b>' + cloudy + '</b> day' + (cloudy === 1 ? ' is' : 's are') + ' cloudy and <b>' + clear + '</b> clear by the thresholds of the analysis notebooks (daily clear-sky index ≤ 0.70 and ≥ 0.85; computed here with this page’s simple clear-sky model).</p>';
     if (r) {
       const st = r.stats, dl = st.MDV.st[v].rmse - st.STL.st[v].rmse;
       const order = [...Array(N).keys()].sort((a, b) => st.STL.st[a].rmse - st.STL.st[b].rmse), rank = order.indexOf(v) + 1;
@@ -524,6 +532,7 @@ function drawTS() {
   if (state.showPT) line(r.PT[v], C.pt, state.emph === 'PT' ? 2.2 : 1.4, [6, 4], dim('PT'));
   if (state.showMDV) line(r.MDV[v], C.mdv, state.emph === 'MDV' ? 2.2 : 1.4, [4, 3], dim('MDV'));
   if (state.showTriv) line(r.STT[v], C.triv, state.emph === 'STT' ? 2 : 1.2, [2, 3], dim('STT'));
+  if (state.showS0) line(r.S0[v], C.s0, state.emph === 'S0' ? 2.2 : 1.4, [8, 3, 2, 3], dim('S0'));
   line(r.STL[v], rgba(C.stmac, 0.16), 6.5, null, dim('STL'));
   line(r.STL[v], C.stmac, 2.1, null, dim('STL'));
   $('gapLbl').textContent = 'gap ' + (gaps.length ? state.gapIdx + 1 : 0) + '/' + gaps.length;
@@ -539,6 +548,7 @@ function tsSeries() {
   if (state.showMDV) s.push({ k: 'MDV', lab: 'Climatology', c: C.mdv });
   if (state.showPT) s.push({ k: 'PT', lab: 'Pure temporal', c: C.pt });
   if (state.showTriv) s.push({ k: 'STT', lab: 'STMAC trivial', c: C.triv });
+  if (state.showS0) s.push({ k: 'S0', lab: 'S0 (no prior)', c: C.s0 });
   return s;
 }
 const valAt = (k, v, i) => k === 'U' ? DATA.U[v][i] : state.res[k][v][i];
@@ -558,14 +568,14 @@ function drawTSOverlay() {
 }
 function gapIndexAt(v, i) { const gs = gapsOf(v); for (let q = 0; q < gs.length; q++) if (i >= gs[q][0] && i < gs[q][1]) return q; return -1; }
 function tsTip(i) {
-  const v = tsGeom.v, q = gapIndexAt(v, i), day = DATA.CS[v][i] > DAY_CS;
+  const v = tsGeom.v, q = gapIndexAt(v, i), day = scored(i);
   let h = '<div class="t">' + whenLab(i) + ' clock · solar ≈ ' + hm(solarMin(v, i)) + '</div>';
   const u = DATA.U[v][i];
   for (const s of tsSeries()) {
     const val = valAt(s.k, v, i);
     h += tipRow(s.lab, f0(val) + (s.k !== 'U' && q >= 0 ? ' <span style="color:var(--muted)">(' + sg(val - u) + ')</span>' : ''), s.c);
   }
-  h += '<div class="n">' + (q >= 0 ? 'Inside gap ' + (q + 1) + ' (' + fmtDur(gapsOf(v)[q][1] - gapsOf(v)[q][0]) + '); brackets = estimate − measured' : 'Observed cell, not scored') + (day ? '' : ' · night, excluded from RMSE') + '</div>';
+  h += '<div class="n">' + (q >= 0 ? 'Inside gap ' + (q + 1) + ' (' + fmtDur(gapsOf(v)[q][1] - gapsOf(v)[q][0]) + '); brackets = estimate − measured' : 'Observed cell, not scored') + (day ? '' : ' · outside ' + EVAL_LAB + ', not scored') + '</div>';
   return h;
 }
 (function wireTS() {
@@ -607,18 +617,18 @@ function renderTsInsight(flash) {
   if (!state.res || !DATA) { setInsight('tsInsight', { pill: 'Gap overview', html: '<p class="ins-hint">Solving the first scenario…</p>' }); return; }
   const r = state.res, v = state.sel, gaps = gapsOf(v), T = r.T;
   const hint = '<p class="ins-hint">Hover the chart for values, click to pin a time. With the chart focused: <kbd>←</kbd><kbd>→</kbd> 5 min, <kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 1 h, <kbd>PgUp</kbd><kbd>PgDn</kbd> gap, <kbd>Esc</kbd> clear.</p>';
-  const statTiles = (gs, withBias) => '<div class="ins-grid">' + MKEYS.filter(k => k !== 'STT' || state.showTriv).map(k => tile(METHODS[k].short, f0(gs.rmse[k]) + ' W/m²', withBias ? 'bias ' + sg(gs.bias[k]) : '', METHODS[k].color())).join('') + '</div>';
+  const statTiles = (gs, withBias) => '<div class="ins-grid">' + MKEYS.filter(shown).map(k => tile(METHODS[k].short, f0(gs.rmse[k]) + ' W/m²', withBias ? 'bias ' + sg(gs.bias[k]) : '', METHODS[k].color())).join('') + '</div>';
   if (state.pin && state.pin.v === v) {
     const i = state.pin.i, q = gapIndexAt(v, i), u = DATA.U[v][i], cs = DATA.CS[v][i], k = dayIndexK(v, i);
     let h = '<div class="ins-grid">' + tile('Measured', f0(u) + ' W/m²', 'clear-sky ' + f0(cs), C.solar);
-    for (const m of MKEYS) { if ((m === 'STT' && !state.showTriv) || (m === 'PT' && !state.showPT) || (m === 'MDV' && !state.showMDV)) continue;
+    for (const m of MKEYS) { if (!shown(m)) continue;
       const e = r[m][v][i] - u; h += tile(METHODS[m].short, f0(r[m][v][i]), q >= 0 ? 'error ' + sg(e) : '', METHODS[m].color()); }
     h += '</div><p><b>' + whenLab(i) + '</b> local clock at <b>' + stn(v) + '</b> (solar time ≈ ' + hm(solarMin(v, i)) + '). ';
-    if (cs <= DAY_CS) h += 'The clear-sky model is below ' + DAY_CS + ' W/m² here, so this is a night-time cell and it is excluded from every RMSE on the page.';
+    if (!scored(i)) h += 'This time is outside the scoring window (' + EVAL_LAB + ' local time, the notebooks’ DAYTIME mask), so it enters no RMSE on the page.';
     h += '</p>';
     if (q >= 0) {
-      const [s0, s1] = gaps[q], errs = MKEYS.filter(m => m !== 'STT' || state.showTriv).map(m => [m, Math.abs(r[m][v][i] - u)]).sort((x, y) => x[1] - y[1]);
-      h += '<p>This cell is <b>' + fmtDur(i - s0) + '</b> into gap ' + (q + 1) + ' of ' + gaps.length + ' (length ' + fmtDur(s1 - s0) + '). ' + (cs > DAY_CS ? 'The closest estimate at this instant is <b>' + METHODS[errs[0][0]].short + '</b>, off by ' + f0(errs[0][1]) + ' W/m²; the furthest is ' + METHODS[errs[errs.length - 1][0]].short + ' at ' + f0(errs[errs.length - 1][1]) + ' W/m².' : '') + '</p>';
+      const [s0, s1] = gaps[q], errs = MKEYS.filter(shown).map(m => [m, Math.abs(r[m][v][i] - u)]).sort((x, y) => x[1] - y[1]);
+      h += '<p>This cell is <b>' + fmtDur(i - s0) + '</b> into gap ' + (q + 1) + ' of ' + gaps.length + ' (length ' + fmtDur(s1 - s0) + '). ' + (scored(i) ? 'The closest estimate at this instant is <b>' + METHODS[errs[0][0]].short + '</b>, off by ' + f0(errs[0][1]) + ' W/m²; the furthest is ' + METHODS[errs[errs.length - 1][0]].short + ' at ' + f0(errs[errs.length - 1][1]) + ' W/m².' : '') + '</p>';
       /* what the solver saw: neighbours at the solar-aligned time */
       const dv = Core.lonShift(v), clim = r.MDV[v][i];
       const parts = neighbours(v).map(n => {
@@ -640,18 +650,18 @@ function renderTsInsight(flash) {
   if (!gaps.length) { setInsight('tsInsight', { pill: 'Gap overview', html: '<p>No gaps at this station in this draw.</p>' + hint }); return; }
   const [s0, s1] = gaps[state.gapIdx], gs = gapStats(v, s0, s1);
   let h = statTiles(gs, true);
-  h += '<p><b>Gap ' + (state.gapIdx + 1) + ' of ' + gaps.length + '</b> at <b>' + stn(v) + '</b> starts ' + whenLab(s0) + ' and lasts <b>' + fmtDur(s1 - s0) + '</b> (' + gs.n.toLocaleString('en-US') + ' cells, ' + gs.nDay.toLocaleString('en-US') + ' in daylight).';
-  if (!gs.nDay) { h += ' It falls entirely at night, so no method is scored on it.</p>'; }
+  h += '<p><b>Gap ' + (state.gapIdx + 1) + ' of ' + gaps.length + '</b> at <b>' + stn(v) + '</b> starts ' + whenLab(s0) + ' and lasts <b>' + fmtDur(s1 - s0) + '</b> (' + gs.n.toLocaleString('en-US') + ' cells, ' + gs.nDay.toLocaleString('en-US') + ' in the ' + EVAL_LAB + ' scoring window).';
+  if (!gs.nDay) { h += ' None of its cells falls in the scoring window, so no method is scored on it.</p>'; }
   else {
-    const rk = MKEYS.filter(k => k !== 'STT' || state.showTriv).sort((x, y) => gs.rmse[x] - gs.rmse[y]);
+    const rk = MKEYS.filter(shown).sort((x, y) => gs.rmse[x] - gs.rmse[y]);
     const dcl = gs.rmse.MDV - gs.rmse.STL;
     h += ' Lowest error on this gap: <b>' + METHODS[rk[0]].short + '</b> (' + f0(gs.rmse[rk[0]]) + ' W/m²). STMAC is ' + (dcl >= 0 ? '<span class="hl">' + f1(dcl) + ' W/m² below</span>' : '<span class="neg">' + f1(-dcl) + ' W/m² above</span>') + ' the climatology here' +
       (Math.abs(gs.bias.STL) > 10 ? ' and ' + (gs.bias.STL > 0 ? 'overestimates' : 'underestimates') + ' the missing sunlight by ' + f0(Math.abs(gs.bias.STL)) + ' W/m² on average' : '') + '.</p>';
-    if (isNum(gs.k)) h += '<p>During the gap’s daylight the sensor measured <b>' + (100 * gs.k).toFixed(0) + '%</b> of the clear-sky model’s energy (clear-sky index ' + gs.k.toFixed(2) + ', ' + skyPhrase(gs.k) + ').' + (gs.k <= CLOUDY_K ? ' Cloudy stretches are where a fixed diurnal prior misses most and neighbours can help.' : '') + '</p>';
+    if (isNum(gs.k)) h += '<p>During the gap’s scored hours the sensor measured <b>' + (100 * gs.k).toFixed(0) + '%</b> of the clear-sky model’s energy (clear-sky index ' + gs.k.toFixed(2) + '; the notebooks call a day cloudy at ≤ 0.70 and clear at ≥ 0.85).' + (gs.k <= CLOUDY_K ? ' Cloudy stretches are where a fixed diurnal prior misses most and neighbours can help; the paper finds the margin over the climatology concentrated there (Section V-F).' : '') + '</p>';
     const all = allGapStats(v).map((x, q) => [q, x]).filter(x => x[1].nDay > 0);
     if (all.length > 1) {
       const byErr = all.slice().sort((x, y) => y[1].rmse.STL - x[1].rmse.STL), rank = byErr.findIndex(x => x[0] === state.gapIdx) + 1;
-      h += '<p>Among this station’s ' + all.length + ' gaps with daylight, this one ranks <b>' + rank + '</b> by STMAC error (1 = hardest).</p><div class="ins-actions">' +
+      h += '<p>Among this station’s ' + all.length + ' gaps with scored cells, this one ranks <b>' + rank + '</b> by STMAC error (1 = hardest).</p><div class="ins-actions">' +
         (byErr[0][0] !== state.gapIdx ? actBtn('Hardest gap (' + f0(byErr[0][1].rmse.STL) + ' W/m²)', 'data-act="gap" data-g="' + byErr[0][0] + '"') : '') +
         (byErr[byErr.length - 1][0] !== state.gapIdx ? actBtn('Easiest gap (' + f0(byErr[byErr.length - 1][1].rmse.STL) + ' W/m²)', 'data-act="gap" data-g="' + byErr[byErr.length - 1][0] + '"') : '') + '</div>';
     }
@@ -669,7 +679,8 @@ const SERIES = [
   { id: 'PT', lab: 'Pure temporal — collapses on long gaps', color: () => C.pt, key: 'showPT' },
   { id: 'MDV', lab: 'Station climatology (MDV) — the baseline to beat', color: () => C.mdv, key: 'showMDV' },
   { id: 'STL', lab: 'STMAC · longitude sheaf', color: () => C.stmac, always: true },
-  { id: 'STT', lab: 'STMAC · trivial sheaf', color: () => C.triv, key: 'showTriv' }];
+  { id: 'STT', lab: 'STMAC · trivial sheaf', color: () => C.triv, key: 'showTriv' },
+  { id: 'S0', lab: 'STMAC without prior (S0) — the ablation of Table I', color: () => C.s0, key: 'showS0' }];
 function drawLegend() {
   const el = $('tsLegend'); el.innerHTML = '';
   for (const s of SERIES) {
@@ -704,10 +715,12 @@ function overviewMetricText() {
   else s += ' and edges STMAC by <b>' + Math.abs(dCL).toFixed(1) + ' W/m²</b> in this draw; across the 20 mask realisations of the paper STMAC stays below it at every block length.';
   if (gain > 0.3) s += ' Aligning stations to solar time before coupling is worth <b>' + gain.toFixed(1) + ' W/m²</b> against the trivial sheaf here.';
   else s += ' Trivial and longitude sheaves land within <b>' + Math.abs(gain).toFixed(2) + ' W/m²</b> of each other in this draw; the paper finds the alignment significant only for gaps up to 6 hours.';
-  if (p.r !== R_RATIO || p.g !== RIDGE) s += ' <b>Note:</b> the weights are set to r = ' + p.r + ', γ = ' + p.g + ', not the paper’s cross-validated pair (r = 1000, γ = 3); the readings above describe your setting, not the published one.';
-  const rank = [['Pure temporal', r.rPT], ['Station climatology', r.rMDV], ['STMAC (trivial sheaf)', r.rSTT], ['STMAC (longitude sheaf)', r.rSTL]].sort((a, b) => a[1] - b[1]);
+  const dS0 = r.rS0 - r.rSTL;
+  s += ' Without its prior (S0: C = 0, g = 0, r = 10) the joint solver reaches <b>' + Math.round(r.rS0) + ' W/m²</b>' + (dS0 >= 0 ? ', so the climatological prior accounts for <b>' + dS0.toFixed(1) + ' W/m²</b> of STMAC’s accuracy here; the paper reports 25 to 43 W/m² over the full year.' : ' and edges STMAC by <b>' + (-dS0).toFixed(1) + ' W/m²</b> in this draw.');
+  if (p.r !== R_RATIO || p.g !== RIDGE) s += ' <b>Note:</b> the weights are set to r = ' + p.r + ', g = ' + p.g + ', not the paper’s cross-validated pair (r = 1000, g = 3); the readings above describe your setting, not the published one.';
+  const rank = [['Pure temporal', r.rPT], ['Station climatology', r.rMDV], ['STMAC (trivial sheaf)', r.rSTT], ['STMAC (longitude sheaf)', r.rSTL], ['STMAC without prior (S0)', r.rS0]].sort((a, b) => a[1] - b[1]);
   s += '<br><b>Ranking for this scenario</b> (lower error is better): ' + rank.map((x, i) => (i + 1) + '. ' + x[0] + ' ' + Math.round(x[1]) + ' W/m²').join(' · ') + '.';
-  s += ' In plain words: an error of ' + Math.round(r.rSTL) + ' W/m² means the repaired curve is typically off by about ' + Math.round(r.rSTL) + ' W per square metre of sensor during daylight, against a midday maximum near 900–1000 in this winter window.';
+  s += ' In plain words: an error of ' + Math.round(r.rSTL) + ' W/m² means the repaired curve is typically off by about ' + Math.round(r.rSTL) + ' W per square metre of sensor during the scored hours (' + EVAL_LAB + '), against a midday maximum near 900–1000 in this winter window.';
   return '<p>' + s + '</p><p class="ins-hint">Click a card for its per-station breakdown, or a Table I row to compare it with the live run.</p>';
 }
 function reconRange(key) {
@@ -726,7 +739,7 @@ function renderMetricInsight(flash) {
     const m = METHODS[f.m], st = r.stats[f.m], ref = f.m === 'STL' ? 'MDV' : 'STL', refSt = r.stats[ref];
     const vals = st.st.map((x, v) => ({ v, x: x.rmse, ref: refSt.st[v].rmse })).sort((a, b) => a.x - b.x);
     const max = Math.max(...vals.map(o => Math.max(o.x, o.ref))) * 1.05;
-    let h = '<div class="ins-grid">' + tile('RMSE', f1(r[m.r]) + ' W/m²', '', m.color()) + tile('MAE', f1(st.mae) + ' W/m²') + tile('Mean bias', sg(st.bias, 1) + ' W/m²', st.bias > 0 ? 'overestimates' : 'underestimates') + tile('Cells scored', st.n.toLocaleString('en-US'), 'removed, daytime') + '</div>';
+    let h = '<div class="ins-grid">' + tile('RMSE', f1(r[m.r]) + ' W/m²', '', m.color()) + tile('MAE', f1(st.mae) + ' W/m²') + tile('Mean bias', sg(st.bias, 1) + ' W/m²', st.bias > 0 ? 'overestimates' : 'underestimates') + tile('Cells scored', st.n.toLocaleString('en-US'), 'removed, ' + EVAL_LAB) + '</div>';
     h += '<div class="ins-bars" role="list">' + vals.map(o => '<button type="button" class="ins-bar' + (o.v === state.sel ? ' cur' : '') + '" data-act="station" data-v="' + o.v + '" role="listitem" title="Show ' + STATIONS[o.v].name + '"><span>' + STATIONS[o.v].code + ' · ' + STATIONS[o.v].name + '</span><span class="tr"><span class="fl" style="width:' + (100 * o.x / max).toFixed(1) + '%;background:' + m.color() + '"></span><span class="mk" style="left:' + (100 * o.ref / max).toFixed(1) + '%;background:' + METHODS[ref].color() + ';box-shadow:0 0 6px ' + METHODS[ref].color() + '"></span></span><span class="nv">' + f0(o.x) + '</span></button>').join('') + '</div>';
     h += '<p class="ins-note">Bars: ' + m.short + ' RMSE per station (W/m²). Tick: ' + METHODS[ref].short + ' at the same station. Click a row to open that station.</p>';
     const beat = vals.filter(o => f.m === 'STL' ? o.x < o.ref : o.ref < o.x).length;
@@ -745,17 +758,20 @@ function renderMetricInsight(flash) {
   }
   /* Table I row */
   const row = TABLE1.find(x => x.k === f.k), p = r.params;
-  const paperRank = [['Pure temporal', row.pt], ['Climatology', row.mdv], ['Transformer', row.tf], ['STMAC', row.stmac]].sort((a, b) => a[1] - b[1]);
-  let h = '<div class="ins-grid">' + tile('Paper STMAC', f1(row.stmac), 'W/m²', C.stmac) + tile('Paper climatology', f1(row.mdv), 'margin ' + f1(row.mdv - row.stmac), C.mdv) + tile('Paper Transformer', f1(row.tf), '', C.tf) + tile('Paper pure temp.', f0(row.pt), '', C.pt) + '</div>';
-  h += '<p>In the paper (full year, 20 masks) at <b>' + row.lab + '</b> blocks the lowest error is <b>' + paperRank[0][0] + '</b>; STMAC sits ' + f1(row.mdv - row.stmac) + ' W/m² below the climatology and ' + f1(row.tf - row.stmac) + ' W/m² below the trained Transformer.</p>';
+  const fy = [['Pure temporal', row.pt], ['Climatology', row.mdv], ['Transformer', row.tf], ['S0 (no prior)', row.s0], ['STMAC', row.stmac]].sort((a, b) => a[1] - b[1]);
+  let h = '<div class="ins-grid">' + tile('Paper STMAC', f1(row.stmac), 'held-out ' + f1(row.hoS), C.stmac) + tile('Paper climatology', f1(row.mdv), 'held-out ' + f1(row.hoMdv), C.mdv) +
+    tile('Paper Transformer', f1(row.tf), 'held-out ' + f1(row.hoTf), C.tf) + tile('Paper S0', f1(row.s0), 'no prior', C.s0) + tile('Paper pure temp.', f0(row.pt), 'full year', C.pt) + '</div>';
+  h += '<p>Over the full year (20 masks) at <b>' + row.lab + '</b> blocks the lowest error is <b>' + fy[0][0] + '</b> (' + (fy[0][1] >= 100 ? f1(fy[0][1]) : f0(fy[0][1])) + ' W/m²). STMAC sits ' + f1(row.mdv - row.stmac) + ' W/m² below the climatology and ' + f1(row.tf - row.stmac) + ' below the trained Transformer; without its prior (S0) it reaches ' + f1(row.s0) + ', so the prior is worth ' + f1(row.s0 - row.stmac) + ' W/m² at this length. On the held-out 7 Nov to 31 Dec period (30 masks) STMAC reaches ' + f1(row.hoS) + ', ' + f1(row.hoMdv - row.hoS) + ' below the climatology and ' + f1(row.hoTf - row.hoS) + ' below the Transformer.</p>';
   let live = null, src = '';
   const sw = state.sweep;
-  if (p.blockIdx === row.k) { live = { pt: r.rPT, mdv: r.rMDV, sl: r.rSTL }; src = 'the scenario on screen'; }
-  else if (sw && sw.rows[row.k] && !sweepStale()) { const q = sw.rows[row.k]; live = { pt: q.pt, mdv: q.mdv, sl: q.sl }; src = 'the live sweep'; }
+  if (p.blockIdx === row.k) { live = { pt: r.rPT, mdv: r.rMDV, sl: r.rSTL, s0: r.rS0 }; src = 'the scenario on screen'; }
+  else if (sw && sw.rows[row.k] && !sweepStale()) { const q = sw.rows[row.k]; live = { pt: q.pt, mdv: q.mdv, sl: q.sl, s0: q.s0 }; src = 'the live sweep'; }
   if (live) {
-    const lr = [['Pure temporal', live.pt], ['Climatology', live.mdv], ['STMAC', live.sl]].sort((a, b) => a[1] - b[1]).map(x => x[0]);
-    const pr = paperRank.filter(x => x[0] !== 'Transformer').map(x => x[0]);
-    h += '<p>From ' + src + ' (' + (DATA.kind === 'real' ? '70-day winter window' : 'synthetic weather') + ', one mask): STMAC <b>' + f1(live.sl) + '</b>, climatology <b>' + f1(live.mdv) + '</b>, pure temporal <b>' + f0(live.pt) + '</b> W/m². Live STMAC is <b>' + (live.sl / row.stmac).toFixed(2) + '×</b> the paper figure. The order of the three shared methods ' + (lr.join() === pr.join() ? '<span class="hl">matches</span> the paper (' + lr.join(' < ') + ').' : '<span class="neg">differs</span> from the paper: live ' + lr.join(' < ') + ', paper ' + pr.join(' < ') + '.') + '</p>';
+    const lr = [['Pure temporal', live.pt], ['Climatology', live.mdv], ['S0 (no prior)', live.s0], ['STMAC', live.sl]].sort((a, b) => a[1] - b[1]).map(x => x[0]);
+    const pr = fy.filter(x => x[0] !== 'Transformer').map(x => x[0]);
+    h += '<p>From ' + src + ' (' + (DATA.kind === 'real' ? '70-day winter window' : 'synthetic weather') + ', one mask): STMAC <b>' + f1(live.sl) + '</b>, climatology <b>' + f1(live.mdv) + '</b>, S0 <b>' + f1(live.s0) + '</b>, pure temporal <b>' + f0(live.pt) + '</b> W/m². ' +
+      (DATA.kind === 'real' ? 'The live window (22 Oct to 30 Dec) overlaps the held-out period, so the held-out column is the closer reference: live STMAC is <b>' + (live.sl / row.hoS).toFixed(2) + '×</b> the held-out figure and ' + (live.sl / row.stmac).toFixed(2) + '× the full-year one. ' : '') +
+      'The order of the four methods run live ' + (lr.join() === pr.join() ? '<span class="hl">matches</span> the full-year column (' + lr.join(' < ') + ').' : '<span class="neg">differs</span> from the full-year column: live ' + lr.join(' < ') + ', paper ' + pr.join(' < ') + '.') + '</p>';
   } else h += '<div class="ins-actions">' + actBtn('Run ' + row.lab + ' live', 'data-act="block" data-k="' + row.k + '"') + '</div>';
   setInsight('metricInsight', { pill: 'Table I · ' + row.lab, html: h, focused: true, flash, onReset: reset });
 }
@@ -814,8 +830,9 @@ async function runSweep() {
     ' block lengths; on multi-day gaps the two nearly coincide, because the diurnal prior is doing most of the work.';
   drawSweep(); renderSweepInsight(); if (state.focus.metric && state.focus.metric.type === 'row') renderMetricInsight();
 }
-const SW_SERIES = [{ k: 'pt', m: 'PT', c: () => C.pt, dash: [6, 4], lw: 1.6 }, { k: 'mdv', m: 'MDV', c: () => C.mdv, dash: [4, 3], lw: 1.6 },
-  { k: 'st', m: 'STT', c: () => C.triv, dash: [2, 3], lw: 1.3 }, { k: 'sl', m: 'STL', c: () => C.stmac, dash: null, lw: 2.2 }];
+const SW_SERIES = [{ k: 'pt', m: 'PT', c: () => C.pt, dash: [6, 4], lw: 1.6 }, { k: 's0', m: 'S0', c: () => C.s0, dash: [8, 3, 2, 3], lw: 1.5 },
+  { k: 'mdv', m: 'MDV', c: () => C.mdv, dash: [4, 3], lw: 1.6 }, { k: 'st', m: 'STT', c: () => C.triv, dash: [2, 3], lw: 1.3 },
+  { k: 'sl', m: 'STL', c: () => C.stmac, dash: null, lw: 2.2 }];
 function drawSweep() {
   const cv = $('sweepChart'), h = boxH(cv);
   const { ctx, w } = sizeCanvas(cv, h); sizeCanvas($('sweepOv'), h);
@@ -824,7 +841,7 @@ function drawSweep() {
   if (!have.length) { placeholder(ctx, w, h, sw ? 'Sweeping…' : 'Run the sweep to draw the curves'); return; }
   const L = 74, R = 14, Tp = 16, B = 34, pw = w - L - R, ph = h - Tp - B;
   let lo = 1e9, hi = 0;
-  for (const r of have) { lo = Math.min(lo, r.pt, r.sl, r.st, r.mdv); hi = Math.max(hi, r.pt, r.sl, r.st, r.mdv); }
+  for (const r of have) { lo = Math.min(lo, r.pt, r.sl, r.st, r.mdv, r.s0); hi = Math.max(hi, r.pt, r.sl, r.st, r.mdv, r.s0); }
   lo = Math.max(1, lo * 0.7); hi *= 1.4;
   const Y = val => Tp + ph - (Math.log10(val) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * ph;
   const X = i => L + (i + 0.5) / BLOCKS.length * pw;
@@ -856,8 +873,6 @@ function drawSweep() {
     const g = rows[rows.length - 1], f = rows[0];
     ctx.font = '12.5px "IBM Plex Mono",ui-monospace,monospace';
     ctx.fillStyle = C.pt; ctx.fillText('pure temporal ×' + (g.pt / f.pt).toFixed(0) + ' growth', L + 8, Y(g.pt) - 10);
-    ctx.fillStyle = C.stmac; ctx.fillText('STMAC ×' + (g.sl / f.sl).toFixed(1), L + 8, Y(g.sl) + 18);
-    ctx.fillStyle = C.mdv; ctx.fillText('station climatology ×' + (g.mdv / f.mdv).toFixed(1), L + 8, Y(g.mdv) - 10);
   }
   if (sweepStale()) { ctx.font = FONT; ctx.fillStyle = C.goldHi; ctx.textAlign = 'right'; ctx.fillText('settings changed since this sweep', w - R - 4, Tp + 12); ctx.textAlign = 'left'; }
   sweepGeom = { X, Y, L, R, Tp, ph, pw, w, h };
@@ -918,7 +933,7 @@ function renderSweepInsight(flash) {
   const sw = state.sweep;
   if (!sw) { setInsight('sweepInsight', { pill: 'Sweep', html: '<p class="ins-hint">Run the sweep, then click any point to read that block length.</p>' }); return; }
   const stale = sweepStale();
-  const staleNote = stale ? '<p class="ins-note">These curves were computed with r = ' + sw.params.r + ', γ = ' + sw.params.g + ', ' + Math.round(sw.params.frac * 100) + '% outage and mask seed ' + sw.params.maskSeed + '. The settings have changed since, so rerun the sweep to refresh them.</p>' : '';
+  const staleNote = stale ? '<p class="ins-note">These curves were computed with r = ' + sw.params.r + ', g = ' + sw.params.g + ', ' + Math.round(sw.params.frac * 100) + '% outage and mask seed ' + sw.params.maskSeed + '. The settings have changed since, so rerun the sweep to refresh them.</p>' : '';
   const f = state.focus.sweep;
   if (!f || !sw.rows[f.k]) {
     const have = sw.rows.map((r, i) => r ? i : -1).filter(i => i >= 0);
@@ -926,6 +941,8 @@ function renderSweepInsight(flash) {
     const rows = sw.rows, wins = rows.filter(r => r.sl < r.mdv).map(r => r.lab), losses = rows.filter(r => r.sl >= r.mdv).map(r => r.lab);
     const gaps = rows.map(r => r.mdv - r.sl);
     let h = '<p>STMAC is below the climatology at <b>' + wins.length + ' of ' + rows.length + '</b> block lengths' + (losses.length ? ' (not at ' + losses.join(', ') + ')' : '') + '. Its margin over the climatology runs from <b>' + sg(Math.max(...gaps), 1) + '</b> to <b>' + sg(Math.min(...gaps), 1) + ' W/m²</b> (positive = STMAC lower). Pure temporal ends <b>×' + (rows[6].pt / rows[6].sl).toFixed(1) + '</b> above STMAC at 7 days.</p>';
+    const s0win = rows.filter(r => r.s0 < r.mdv).map(r => r.lab), prior = rows.map(r => r.s0 - r.sl);
+    h += '<p>Without its prior, the joint solver (S0) is below the climatology ' + (s0win.length ? 'only at ' + s0win.join(', ') : 'at no block length') + ', and the prior is worth <b>' + f1(Math.min(...prior)) + '</b> to <b>' + f1(Math.max(...prior)) + ' W/m²</b> across block lengths. The paper reports the same pattern over the full year: S0 improves on the climatology only at 30 minutes, and the prior accounts for 25 to 43 W/m².</p>';
     h += '<p class="ins-hint">Hover for values, click a point to read that block length. With the chart focused: <kbd>←</kbd><kbd>→</kbd> block length, <kbd>↑</kbd><kbd>↓</kbd> method, <kbd>Enter</kbd> loads it above.</p>';
     setInsight('sweepInsight', { pill: 'Sweep overview', html: h + staleNote, flash });
     return;
@@ -936,7 +953,8 @@ function renderSweepInsight(flash) {
   h += '<p>At <b>' + bl.lab + '</b> blocks (' + (100 * r.frac).toFixed(1) + '% of cells removed) the order is ' + rank.map(x => METHODS[x[0]].short + ' ' + f1(x[1])).join(' < ') + ' W/m². STMAC is ' + (r.mdv - r.sl >= 0 ? '<span class="hl">' + f1(r.mdv - r.sl) + ' W/m² (' + (100 * (r.mdv - r.sl) / r.mdv).toFixed(1) + '%) below</span>' : '<span class="neg">' + f1(r.sl - r.mdv) + ' W/m² above</span>') + ' the climatology, and pure temporal is <b>×' + (r.pt / r.sl).toFixed(1) + '</b> STMAC.</p>';
   if (first && f.k > 0) h += '<p>You selected <b>' + METHODS[m].short + '</b>: its error is <b>×' + (r[key] / first[key]).toFixed(1) + '</b> its 30-min value (' + f1(first[key]) + ' → ' + f1(r[key]) + ' W/m²).</p>';
   const row = TABLE1.find(x => x.k === f.k);
-  if (row) h += '<p>Paper Table I at ' + row.lab + ' (full year, 20 masks): STMAC ' + f1(row.stmac) + ', climatology ' + f1(row.mdv) + ', Transformer ' + f1(row.tf) + ', pure temporal ' + f0(row.pt) + ' W/m². Live STMAC is <b>' + (r.sl / row.stmac).toFixed(2) + '×</b> the paper value on this ' + (sw.params.dataset === 'real' ? '70-day winter window' : 'synthetic run') + '.</p>';
+  if (row) h += '<p>Paper Table I at ' + row.lab + ': full year (20 masks) STMAC ' + f1(row.stmac) + ', S0 ' + f1(row.s0) + ', climatology ' + f1(row.mdv) + ', Transformer ' + f1(row.tf) + ', pure temporal ' + f0(row.pt) + ' W/m²; held-out 7 Nov to 31 Dec (30 masks) STMAC ' + f1(row.hoS) + ', climatology ' + f1(row.hoMdv) + ', Transformer ' + f1(row.hoTf) + '. ' +
+    (sw.params.dataset === 'real' ? 'The live 70-day window overlaps the held-out period: live STMAC is <b>' + (r.sl / row.hoS).toFixed(2) + '×</b> the held-out value and ' + (r.sl / row.stmac).toFixed(2) + '× the full-year one.' : 'This sweep ran on synthetic weather, so compare shapes, not values.') + '</p>';
   else h += '<p>Table I of the paper does not report ' + bl.lab + ' blocks; the live sweep adds it to fill the curve.</p>';
   const onScreen = state.res && state.res.params.blockIdx === f.k && !stale;
   h += '<div class="ins-actions">' + (onScreen ? '<span class="ins-note">This is the scenario shown in the reconstruction chart.</span>' : actBtn('Load ' + bl.lab + ' in the reconstruction chart', 'data-act="block" data-k="' + f.k + '"')) + '</div>';
@@ -945,10 +963,11 @@ function renderSweepInsight(flash) {
 function buildSweepLegend() {
   const el = $('sweepLegend'); el.innerHTML = '';
   const items = [['Pure temporal — per-station smoothing, no spatial info', C.pt, 'dash'], ['Station climatology (MDV) — mean diurnal cycle, ±15 days', C.mdv, 'dash'],
+    ['STMAC without prior (S0) — C = 0, g = 0, r = 10, the ablation of Table I', C.s0, 'dashdot'],
     ['STMAC · trivial sheaf — graph coupling, no time alignment', C.triv, 'dot'], ['STMAC · longitude sheaf — proposed, solar-time aligned', C.stmac, 'solid']];
   for (const [lab, col, styl] of items) {
     const s = document.createElement('span'); s.className = 'sl'; s.style.cursor = 'default';
-    const bg = styl === 'solid' ? col : styl === 'dash' ? 'repeating-linear-gradient(90deg,' + col + ' 0 6px,transparent 6px 10px)' : 'repeating-linear-gradient(90deg,' + col + ' 0 3px,transparent 3px 6px)';
+    const bg = styl === 'solid' ? col : styl === 'dashdot' ? 'repeating-linear-gradient(90deg,' + col + ' 0 8px,transparent 8px 11px,' + col + ' 11px 13px,transparent 13px 16px)' : styl === 'dash' ? 'repeating-linear-gradient(90deg,' + col + ' 0 6px,transparent 6px 10px)' : 'repeating-linear-gradient(90deg,' + col + ' 0 3px,transparent 3px 6px)';
     s.innerHTML = '<span class="sw" style="background:' + bg + '"></span>' + lab; el.appendChild(s);
   }
 }
@@ -979,12 +998,12 @@ function updateEcon() {
   if (ei) {
     const cCL = cost(gw, clim.R, pen, out) / 1e6, dCL = cCL - cST;
     let txt = 'At <b>' + gw + ' GW</b> deployed, <b>$' + pen + '/MWh</b> penalties and <b>' + Math.round(out * 100) + '%</b> sensor outage, the reconstruction error of STMAC prices at <b>$' + (cST >= 100 ? cST.toFixed(0) : cST.toFixed(1)) + 'M/yr</b> under Eq. (7). The station climatology costs <b>$' + (cCL >= 100 ? cCL.toFixed(0) : cCL.toFixed(1)) + 'M/yr</b>, so the gap between them is <span class="hl">$' + dCL.toFixed(1) + 'M/yr</span>' +
-      (state.econSrc === 'cloudy' ? ' — on cloudy cells the two methods differ by 46.5 W/m², against 12.8 W/m² on clear cells, so this is where the spatial correction earns its keep.'
+      (state.econSrc === 'cloudy' ? ' — averaged over the seven block lengths the two differ by 46.5 W/m² on cloudy cells; across block lengths the margin is 9.1 to 180.1 W/m² on cloudy cells against 1.3 to 58.9 W/m² on clear cells (Section V-F), so this is where the spatial correction earns its keep.'
         : state.econSrc === 'paper' ? ' — averaged over the seven block lengths the two differ by 16.8 W/m²; at 3-day gaps alone it narrows to 2.9 W/m², and on cloudy cells it widens to 46.5 W/m².'
           : ' — at multi-day gaps the two methods differ by only a few W/m², at short gaps by far more.');
     if (tf) { const cTF = cost(gw, tf.R, pen, out) / 1e6; txt += ' The trained Transformer costs <b>$' + (cTF >= 100 ? cTF.toFixed(0) : cTF.toFixed(1)) + 'M/yr</b>, <b>$' + (cTF - cST).toFixed(1) + 'M/yr</b> above STMAC.'; }
     if (methods.some(m => m.lab.indexOf('Pure temporal') >= 0)) txt += ' The pure-temporal row is a reference only: its RMSE exceeds the physical irradiance range.';
-    if (state.econSrc === 'cloudy') txt += ' These bars apply the errors measured on cloudy cells at full capacity and full outage fraction, so they describe a cloud-dominated stress year and are not a share of the all-cell figure. Cloudy cells are 11.7% of the evaluated data (daily clear-sky index at most 0.70); the Transformer and pure-temporal baselines were not run on this subset, so only the two methods above are priced.';
+    if (state.econSrc === 'cloudy') txt += ' These bars apply the errors measured on cloudy cells at full capacity and full outage fraction, so they describe a cloud-dominated stress year and are not a share of the all-cell figure. Cloudy cells are 11.7% of the evaluated data (days with a daily clear-sky index of at most 0.70 in the analysis notebooks); the Transformer and pure-temporal baselines were not run on this subset, so only the two methods above are priced.';
     if (state.econSrc !== 'live' && state.res) {
       const cL = cost(gw, state.res.rSTL, pen, out) / 1e6, cM = cost(gw, state.res.rMDV, pen, out) / 1e6;
       txt += ' <b>Your current scenario</b> (' + BLOCKS[state.res.params.blockIdx].lab + ' blocks, live ' + (DATA && DATA.kind === 'syn' ? 'synthetic run' : '70-day window') + '): STMAC ' + Math.round(state.res.rSTL) + ' W/m² → $' + cL.toFixed(1) + 'M/yr; climatology ' + Math.round(state.res.rMDV) + ' W/m² → $' + cM.toFixed(1) + 'M/yr at these market settings.';
@@ -1001,8 +1020,8 @@ function updateEcon() {
       const st = rows.find(x => x.lab.indexOf('longitude') >= 0), cl = rows.find(x => x.lab.indexOf('climatology') >= 0), pt = rows.find(x => x.lab.indexOf('Pure') >= 0);
       const perW = gw * out * 4380 * pen / 1e6;
       const items = [];
-      items.push('<b>Scenario:</b> ' + bl.lab + ' outages covering ' + Math.round(r.effFrac * 100) + '% of each station’s record (mask seed ' + p.maskSeed + '), ' + (DATA.kind === 'real' ? 'real 1999 record, 22 Oct to 30 Dec' : 'synthetic weather') + ', weights r = ' + p.r + ', γ = ' + p.g +
-        (p.r === R_RATIO && p.g === RIDGE ? ' (the paper’s values).' : ' (changed from the paper’s r = 1000, γ = 3).'));
+      items.push('<b>Scenario:</b> ' + bl.lab + ' outages covering ' + Math.round(r.effFrac * 100) + '% of each station’s record (mask seed ' + p.maskSeed + '), ' + (DATA.kind === 'real' ? 'real 1999 record, 22 Oct to 30 Dec' : 'synthetic weather') + ', weights r = ' + p.r + ', g = ' + p.g +
+        (p.r === R_RATIO && p.g === RIDGE ? ' (the paper’s values).' : ' (changed from the paper’s r = 1000, g = 3).'));
       items.push('<b>Market levers:</b> ' + gw + ' GW deployed, $' + pen + '/MWh penalty, ' + Math.round(out * 100) + '% outage share. At these settings every 1 W/m² of reconstruction error costs about <b>$' + perW.toFixed(2) + 'M per year</b>, so the cost bars are simply the error bars in dollars.');
       items.push('<b>Ranking by annual cost (cheapest first):</b><ul>' + rows.map((x, i) => '<li>' + (i + 1) + '. ' + x.lab + ': ' + Math.round(x.R) + ' W/m² → $' + fm(x.c) + 'M/yr</li>').join('') + '</ul>');
       const d = cl.c - st.c;
@@ -1013,7 +1032,7 @@ function updateEcon() {
       const gs = r.rSTT - r.rSTL;
       items.push('<b>Solar-time alignment:</b> the longitude sheaf is ' + (gs > 0.05 ? gs.toFixed(2) + ' W/m² better than' : gs < -0.05 ? (-gs).toFixed(2) + ' W/m² worse than' : 'within ' + Math.abs(gs).toFixed(2) + ' W/m² of') + ' the trivial sheaf here, worth $' + Math.abs(gs * perW).toFixed(3) + 'M/yr. The paper finds the alignment significant only for gaps up to 6 hours, worth 1.59, 1.06 and 0.30 W/m² at 30 minutes, 2 hours and 6 hours.');
       if (DATA.kind === 'real') items.push('<b>Why these figures are lower than the paper’s:</b> Table II uses full-year means over 20 masks averaged across the seven block lengths (STMAC 147 W/m²). This page runs one mask on a 70-day winter window with weaker sunlight, so both the errors and the dollar figures are smaller. The ordering of the methods is what carries over.');
-      items.push('<b>What to try next:</b> shorten the block to 30 min or 2 h and pure temporal becomes the cheapest; lengthen it to 3 or 7 days and the climatology catches up with STMAC; double the penalty rate and every bar doubles; set γ = 0 to see what removing the pull toward climatology does on long gaps.');
+      items.push('<b>What to try next:</b> shorten the block to 30 min or 2 h and pure temporal becomes the cheapest; lengthen it to 3 or 7 days and the climatology catches up with STMAC; double the penalty rate and every bar doubles; set g = 0 to see what removing the pull toward climatology does on long gaps.');
       lv.innerHTML = items.map(t => '<li>' + t + '</li>').join('');
     }
   }
@@ -1112,13 +1131,15 @@ function popHTML(kind) {
       '<tr><td>Pure temporal (11 banded solves)</td><td>' + fmtMs(tm.pt) + '</td></tr><tr><td>Outage mask</td><td>' + fmtMs(tm.mask) + '</td></tr>' +
       '<tr><td>Climatology fill + error statistics</td><td>' + fmtMs(tm.mdv + tm.stats) + '</td></tr><tr><td>Total in the solver</td><td>' + fmtMs(tm.total) + '</td></tr>' +
       '<tr><td>Round trip incl. data transfer</td><td>' + fmtMs(r.wall) + '</td></tr></table>' +
-      '<p>Everything ran ' + where + '. This session has run <b>' + lg.length + '</b> scenario' + (lg.length === 1 ? '' : 's') + '; the median headline solve is <b>' + fmtMs(median(lg.map(x => x.ms))) + '</b>.</p>';
+      '<p>Everything ran ' + where + '. This session has run <b>' + lg.length + '</b> scenario' + (lg.length === 1 ? '' : 's') + '; the median headline solve is <b>' + fmtMs(median(lg.map(x => x.ms))) + '</b>.</p>' +
+      '<p>For scale, the paper measures 0.54 s for one year of 5-minute data at 11 stations and 5.8 s at 100 stations with sparse LU on a laptop CPU, a scaling of N<sup>1.08</sup> (Section IV-D). This page solves the 70-day window with a banded Cholesky factorisation, which gives the same exact solution.</p>';
   }
   if (kind === 'params') return '<h3>Trained parameters · 0</h3><p>STMAC has no training set and no fitted model. This session has run <b>' + state.solveLog.length + '</b> reconstruction' + (state.solveLog.length === 1 ? '' : 's') + '; each one recomputed the climatology from the observed cells of its own mask and solved the system from scratch, with nothing learned or carried over between runs.</p>';
   if (kind === 'weights') {
     const paper = state.r === R_RATIO && state.g === RIDGE;
-    return '<h3>Weights</h3><p>In use now: <b>r = ' + state.r + ', γ = ' + state.g + '</b>' + (paper ? ', the pair the paper selects by block cross-validation on observed cells.' : '. The paper’s cross-validated pair is r = 1000, γ = 3.') + '</p><p>r sets how much temporal smoothness counts against neighbour agreement; γ sets how strongly long gaps are pulled back to the climatology.</p>' +
-      (paper ? '' : '<div class="ins-actions">' + actBtn('Reset to r = 1000, γ = 3', 'data-act="reset-weights"') + '</div>');
+    return '<h3>Weights</h3><p>In use now: <b>r = ' + state.r + ', g = ' + state.g + '</b>' + (paper ? ', the pair the paper selects by block cross-validation on observed cells.' : '. The paper’s cross-validated pair is r = 1000, g = 3.') + '</p><p>Only two ratios of Eq. (5) matter: r = α<sub>t</sub>/α<sub>s</sub> sets how much temporal smoothness counts against neighbour agreement, and g = γ/α<sub>s</sub> sets how strongly long gaps are pulled back to the climatology (g → ∞ recovers it).</p>' +
+      '<p>Selection (Section IV-D): for each outage length, 5% of the observed cells are hidden in blocks of that length and the error on the hidden daytime cells is averaged over the seven lengths. Over r ∈ {10, 10², 10³, 10⁴} and g ∈ {0, 0.3, 1, 3, 10, 30} this picks r = 10³, g = 3 on the 1999 network; on the 2019 satellite field it picks r = 10 with g = 1.0 (N = 11) and g = 0.3 (N = 25, 50).</p>' +
+      (paper ? '' : '<div class="ins-actions">' + actBtn('Reset to r = 1000, g = 3', 'data-act="reset-weights"') + '</div>');
   }
   if (kind === 'unknowns') {
     if (!r) return '<h3>Unknown cells</h3><p>The first scenario is still running.</p>';
@@ -1130,7 +1151,7 @@ function popHTML(kind) {
       '<tr><td>Factorisation work ≈ n·bw²</td><td>' + (r.n * r.bw * r.bw / 1e6).toFixed(1) + ' M</td></tr></table>' +
       '<p>Ordering the unknowns by (time, station) keeps the system of Eq. (6) banded, which is why one exact Cholesky factorisation fits in a browser tab.</p>';
   }
-  return '<h3>Transformer baseline</h3><p>The deep-learning baseline of Section V-C needs <b>136,000</b> trained parameters, <b>25</b> epochs on curated training data, and retraining whenever the sensor network changes. Its figures on this page are quoted from the paper; the page does not run it.</p>';
+  return '<h3>Transformer baseline</h3><p>The deep-learning baseline of Section V-C is a four-layer encoder (d<sub>model</sub> = 64, 4 heads, feed-forward width 128) with <b>136,000</b> trained parameters, trained for <b>25</b> epochs with random masks on daily windows of 288 samples from the first 70% of the record. It needs curated training data and retraining whenever the sensor network changes.</p><p>Because its training period is inside the full-year evaluation, the paper repeats the comparison on the held-out 7 Nov to 31 Dec period, where STMAC is lower at all seven lengths by 22 to 45 W/m² in 30 of 30 realisations. Its figures on this page are quoted from the paper; the page does not run it.</p>';
 }
 function openPop(btn) {
   const kind = btn.dataset.pop;
@@ -1164,7 +1185,7 @@ document.addEventListener('click', e => {
 
 /* ================= controls ================= */
 function onSettingsChanged() {
-  $('bWeights').textContent = 'r = ' + state.r + ' · γ = ' + state.g;
+  $('bWeights').textContent = 'r = ' + state.r + ' · g = ' + state.g;
   requestScenario();
   if (state.sweep) { drawSweep(); renderSweepInsight(); }
 }
@@ -1199,9 +1220,9 @@ function buildWeightChips() {
   R_CHOICES.forEach(v => { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip' + (v === state.r ? ' on' : ''); c.setAttribute('aria-pressed', v === state.r ? 'true' : 'false');
     c.textContent = String(v); c.title = 'ratio of the temporal smoothness weight to the spatial weight';
     c.addEventListener('click', () => { if (state.r === v) return; state.r = v; buildWeightChips(); onSettingsChanged(); }); er.appendChild(c); });
-  const lab2 = document.createElement('span'); lab2.className = 'chip-lab'; lab2.textContent = 'γ (pull toward climatology)'; eg.appendChild(lab2);
+  const lab2 = document.createElement('span'); lab2.className = 'chip-lab'; lab2.textContent = 'g (pull toward climatology)'; eg.appendChild(lab2);
   G_CHOICES.forEach(v => { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip' + (v === state.g ? ' on' : ''); c.setAttribute('aria-pressed', v === state.g ? 'true' : 'false');
-    c.textContent = String(v); c.title = 'ridge weight: larger values keep long gaps closer to the station climatology';
+    c.textContent = String(v); c.title = 'g = γ/αs, the ridge weight: larger values keep long gaps closer to the station climatology';
     c.addEventListener('click', () => { if (state.g === v) return; state.g = v; buildWeightChips(); onSettingsChanged(); }); eg.appendChild(c); });
   scheduleStamp();
 }

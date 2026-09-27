@@ -37,12 +37,24 @@ const AT=10.0;                    /* smoothing weight of the pure-temporal basel
    on observed cells of the full 1999 record (Section IV-D of the paper) */
 const R_RATIO=1000, RIDGE=3, MDV_WIN=15;
 const GRAPH_K=3, GRAPH_SIGMA=300; /* k-NN graph, Gaussian weights (km) */
-const DAY_CS=20;                  /* a cell counts as daytime when clear-sky GHI > 20 W/m2 */
+/* Scored cells: unobserved cells at clock hours 8 to 16 inclusive (08:00-16:55 local time),
+   the DAYTIME mask of the analysis notebooks; the paper writes "between 08:00 and 16:00". */
+const EVAL_H0=8, EVAL_H1=16;
+const DAY_CS=20;                  /* clear-sky GHI above this counts as daylight (display only) */
+/* longitude sheaf: shifts are measured from the network-mean longitude (Section III-B) */
+const LON_MEAN=STATIONS.reduce((a,s)=>a+s.lon,0)/STATIONS.length;
+/* ablation S0 of Table I: the joint solver without prior (C = 0, g = 0, r = 10) */
+const S0_R=10, S0_G=0;
 
 function setGrid(days,doy0,startUTC){DAYS=days;T=SPD*DAYS;DOY0=doy0;START_UTC=startUTC;}
 function grid(){return {DAYS,T,DOY0,START_UTC};}
-/* integer-sample longitude shift used by the longitude sheaf, per station */
-function lonShift(v){return Math.round((STATIONS[v].lon/15-TZ)*12);}
+/* delta_v = (lambda_v - mean lambda)/(15 deg/h): exact value in minutes, and the whole
+   5-minute samples this page shifts by (the reference implementation shifts fractionally by FFT) */
+function lonShiftMin(v){return (STATIONS[v].lon-LON_MEAN)*4;}
+function lonShift(v){return Math.round((STATIONS[v].lon-LON_MEAN)/15*12);}
+const evalHour=i=>{const h=Math.floor((i%SPD)*5/60);return h>=EVAL_H0&&h<=EVAL_H1;};
+let EVAL=null,EVAL_T=0;
+function evalMask(){if(EVAL_T!==T){EVAL=new Uint8Array(T);for(let i=0;i<T;i++)EVAL[i]=evalHour(i)?1:0;EVAL_T=T;}return EVAL;}
 
 /* ================= physics: clear sky + clouds ================= */
 function clearSky(v,i){
@@ -210,9 +222,9 @@ function sparseLg(Lg){
    Unknowns are the unobserved cells ordered by (time, station); with that ordering the
    system K_mm x = -K_mo z_o (Eq. 6 of the paper) is banded with half-bandwidth < 2N,
    so a banded Cholesky factorisation solves it exactly in O(n * bandwidth^2). ---- */
-function stmacJoint(Z,M,Lg,r,g,useShift,halfWin){
-  const del=STATIONS.map(s=>Math.round((s.lon/15-TZ)*12));
-  const C=mdvPrior(Z,M,halfWin);
+function stmacJoint(Z,M,Lg,r,g,useShift,halfWin,noPrior){
+  const del=STATIONS.map((s,v)=>lonShift(v));
+  const C=noPrior?STATIONS.map(()=>new Float64Array(T)):mdvPrior(Z,M,halfWin);
   const A0=[],Mm=[];
   for(let v=0;v<N;v++){
     const a=new Float64Array(T),mf=new Float64Array(T);
@@ -307,19 +319,19 @@ function stmacJoint(Z,M,Lg,r,g,useShift,halfWin){
   return {R:Rec,C:C,n:n,bw:bw};
 }
 
-function rmseMasked(truth,CS,rec,M){
-  let s=0,c=0;
+function rmseMasked(truth,rec,M){
+  const E=evalMask();let s=0,c=0;
   for(let v=0;v<N;v++)for(let i=0;i<T;i++)
-    if(!M[v][i]&&CS[v][i]>DAY_CS){const d=rec[v][i]-truth[v][i];s+=d*d;c++;}
+    if(!M[v][i]&&E[i]){const d=rec[v][i]-truth[v][i];s+=d*d;c++;}
   return c?Math.sqrt(s/c):NaN;
 }
 /* Same cell selection as rmseMasked, broken down per station, plus MAE and mean bias
    (reconstruction minus truth: positive = overestimate). */
-function errorStats(truth,CS,rec,M){
-  const st=[];let S=0,A=0,B=0,C=0;
+function errorStats(truth,rec,M){
+  const E=evalMask(),st=[];let S=0,A=0,B=0,C=0;
   for(let v=0;v<N;v++){
     let s=0,a=0,b=0,c=0;
-    for(let i=0;i<T;i++)if(!M[v][i]&&CS[v][i]>DAY_CS){const d=rec[v][i]-truth[v][i];s+=d*d;a+=Math.abs(d);b+=d;c++;}
+    for(let i=0;i<T;i++)if(!M[v][i]&&E[i]){const d=rec[v][i]-truth[v][i];s+=d*d;a+=Math.abs(d);b+=d;c++;}
     st.push({rmse:c?Math.sqrt(s/c):NaN,mae:c?a/c:NaN,bias:c?b/c:NaN,n:c});
     S+=s;A+=a;B+=b;C+=c;
   }
@@ -334,7 +346,8 @@ function pairCorrelations(U,CS){
   const dep=[],depS=[],day=[],dayS=[];
   for(let v=0;v<N;v++){
     const a=new Float64Array(T),dm=new Float64Array(T);
-    for(let i=0;i<T;i++){a[i]=U[v][i]-Cl[v][i];dm[i]=CS[v][i]>DAY_CS?1:0;}
+    const E=evalMask();
+    for(let i=0;i<T;i++){a[i]=U[v][i]-Cl[v][i];dm[i]=E[i];}
     const as=new Float64Array(T),ds=new Float64Array(T);
     shiftInt(a,-lonShift(v),as);shiftInt(dm,-lonShift(v),ds);
     dep.push(a);day.push(dm);depS.push(as);dayS.push(ds);
@@ -346,20 +359,22 @@ function pairCorrelations(U,CS){
     const cov=sxy-sx*sy/n,vx=sxx-sx*sx/n,vy=syy-sy*sy/n;
     return {r:cov/Math.sqrt(vx*vy),n};
   }
-  /* daily clear-sky index (sum of GHI / sum of the page's clear-sky model) per station-day */
-  const nd=Math.round(T/SPD),kd=[],ones=new Float64Array(nd).fill(1);
+  /* daily clear-sky index per station-day over the scoring hours, as the notebooks compute it
+     (sum of GHI / sum of clear-sky GHI), here with the page's simple clear-sky model */
+  const E=evalMask(),nd=Math.round(T/SPD),kd=[],ones=new Float64Array(nd).fill(1);
   for(let v=0;v<N;v++){const k=new Float64Array(nd);
-    for(let d=0;d<nd;d++){let a=0,b=0;for(let s=0;s<SPD;s++){a+=U[v][d*SPD+s];b+=CS[v][d*SPD+s];}k[d]=b>0?a/b:0;}
+    for(let d=0;d<nd;d++){let a=0,b=0;for(let s=0;s<SPD;s++){const i=d*SPD+s;if(E[i]){a+=U[v][i];b+=CS[v][i];}}k[d]=b>0?a/b:0;}
     kd.push(k);}
-  const aligned=[],clock=[],nAligned=[],daily=[];
-  for(let i=0;i<N;i++){aligned.push(new Float64Array(N));clock.push(new Float64Array(N));nAligned.push(new Float64Array(N));daily.push(new Float64Array(N));}
-  for(let i=0;i<N;i++){aligned[i][i]=1;clock[i][i]=1;daily[i][i]=1;
+  const aligned=[],clock=[],nAligned=[],daily=[],raw=[];
+  for(let i=0;i<N;i++){aligned.push(new Float64Array(N));clock.push(new Float64Array(N));nAligned.push(new Float64Array(N));daily.push(new Float64Array(N));raw.push(new Float64Array(N));}
+  for(let i=0;i<N;i++){aligned[i][i]=1;clock[i][i]=1;daily[i][i]=1;raw[i][i]=1;
     for(let j=i+1;j<N;j++){
       const a=corr(depS[i],depS[j],dayS[i],dayS[j]),c=corr(dep[i],dep[j],day[i],day[j]);
       aligned[i][j]=aligned[j][i]=a.r;clock[i][j]=clock[j][i]=c.r;nAligned[i][j]=nAligned[j][i]=a.n;
       daily[i][j]=daily[j][i]=corr(kd[i],kd[j],ones,ones).r;
+      raw[i][j]=raw[j][i]=corr(U[i],U[j],E,E).r;  /* raw GHI at equal clock time, scoring hours */
     }}
-  return {aligned,clock,n:nAligned,daily,kDaily:kd};
+  return {aligned,clock,n:nAligned,daily,raw,kDaily:kd};
 }
 
 /* ================= engine: the message handler used by the worker and the fallback ===== */
@@ -386,7 +401,7 @@ function createEngine(loadRealPayload){
       out.U=pack(ds.U);out.CS=pack(ds.CS);
       const c=pairCorrelations(ds.U,ds.CS);
       out.corrAligned=c.aligned.map(r=>Array.from(r));out.corrClock=c.clock.map(r=>Array.from(r));
-      out.corrN=c.n.map(r=>Array.from(r));out.corrDaily=c.daily.map(r=>Array.from(r));
+      out.corrN=c.n.map(r=>Array.from(r));out.corrDaily=c.daily.map(r=>Array.from(r));out.corrRaw=c.raw.map(r=>Array.from(r));
       out.kDaily=c.kDaily.map(r=>Array.from(r));
       out.transfer=[out.U.buffer,out.CS.buffer];
     }
@@ -403,25 +418,27 @@ function createEngine(loadRealPayload){
     t=now();const pt=pureTemporal(U,M,AT);tm.pt=now()-t;
     t=now();const stt=stmacJoint(U,M,G.Lg,p.r,p.g,false,MDV_WIN);tm.stt=now()-t;
     t=now();const mdv=climFill(U,M,stl.C);tm.mdv=now()-t;
+    t=now();const s0=stmacJoint(U,M,G.Lg,S0_R,S0_G,true,MDV_WIN,true);tm.s0=now()-t;
     t=now();
-    const stats={PT:errorStats(U,CS,pt,M),MDV:errorStats(U,CS,mdv,M),STL:errorStats(U,CS,stl.R,M),STT:errorStats(U,CS,stt.R,M)};
+    const stats={PT:errorStats(U,pt,M),MDV:errorStats(U,mdv,M),STL:errorStats(U,stl.R,M),STT:errorStats(U,stt.R,M),S0:errorStats(U,s0.R,M)};
     tm.stats=now()-t;tm.total=now()-t00;
     const out={dsKey:ds.key,params:p,effFrac:frac,nb,n:stl.n,bw:stl.bw,ms:tm.stl,tm,
-      rPT:rmseMasked(U,CS,pt,M),rMDV:rmseMasked(U,CS,mdv,M),rSTL:rmseMasked(U,CS,stl.R,M),rSTT:rmseMasked(U,CS,stt.R,M),
-      stats,M:packMask(M),PT:pack(pt),MDV:pack(mdv),STL:pack(stl.R),STT:pack(stt.R)};
-    out.transfer=[out.M.buffer,out.PT.buffer,out.MDV.buffer,out.STL.buffer,out.STT.buffer];
+      rPT:rmseMasked(U,pt,M),rMDV:rmseMasked(U,mdv,M),rSTL:rmseMasked(U,stl.R,M),rSTT:rmseMasked(U,stt.R,M),rS0:rmseMasked(U,s0.R,M),
+      stats,M:packMask(M),PT:pack(pt),MDV:pack(mdv),STL:pack(stl.R),STT:pack(stt.R),S0:pack(s0.R)};
+    out.transfer=[out.M.buffer,out.PT.buffer,out.MDV.buffer,out.STL.buffer,out.STT.buffer,out.S0.buffer];
     return out;
   }
   function sweepBlock(p){
     ensure(p);
     const U=ds.U,CS=ds.CS,bl=BLOCKS[p.k],t0=now();
     const {M,frac}=buildBlockMask(bl.s,p.frac,p.maskSeed);
-    const pt=rmseMasked(U,CS,pureTemporal(U,M,AT),M);
+    const pt=rmseMasked(U,pureTemporal(U,M,AT),M);
     const jl=stmacJoint(U,M,G.Lg,p.r,p.g,true,MDV_WIN);
-    const sl=rmseMasked(U,CS,jl.R,M);
-    const sT=rmseMasked(U,CS,stmacJoint(U,M,G.Lg,p.r,p.g,false,MDV_WIN).R,M);
-    const md=rmseMasked(U,CS,climFill(U,M,jl.C),M);
-    return {k:p.k,lab:bl.lab,pt,mdv:md,sl,st:sT,frac,ms:now()-t0};
+    const sl=rmseMasked(U,jl.R,M);
+    const sT=rmseMasked(U,stmacJoint(U,M,G.Lg,p.r,p.g,false,MDV_WIN).R,M);
+    const md=rmseMasked(U,climFill(U,M,jl.C),M);
+    const s0=rmseMasked(U,stmacJoint(U,M,G.Lg,S0_R,S0_G,true,MDV_WIN,true).R,M);
+    return {k:p.k,lab:bl.lab,pt,mdv:md,sl,st:sT,s0,frac,ms:now()-t0};
   }
   const ops={load,scenario,sweepBlock};
   return {
@@ -434,7 +451,8 @@ function createEngine(loadRealPayload){
 }
 
 root.STMACCore={
-  STATIONS,N,SPD,TZ,SYN,REALMETA,BLOCKS,AT,R_RATIO,RIDGE,MDV_WIN,GRAPH_K,GRAPH_SIGMA,DAY_CS,
+  STATIONS,N,SPD,TZ,SYN,REALMETA,BLOCKS,AT,R_RATIO,RIDGE,MDV_WIN,GRAPH_K,GRAPH_SIGMA,DAY_CS,EVAL_H0,EVAL_H1,LON_MEAN,S0_R,S0_G,
+  lonShiftMin,evalHour,evalMask,
   setGrid,grid,lonShift,mulberry32,clearSky,hav,genData,computeCS,decodeReal,distMatrix,buildGraph,
   tempSolve,shiftInt,buildBlockMask,pureTemporal,mdvPrior,climFill,stmacJoint,rmseMasked,errorStats,
   pairCorrelations,createEngine

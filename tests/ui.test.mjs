@@ -10,7 +10,7 @@ import { ROOT, SANDBOX_SCRIPTS, startServer, launch, openPage, solved, insight, 
 const ref = readReference().scenarios;
 const scen = (kind, blockIdx, extra = {}) => ref.find(s => s.kind === kind && s.blockIdx === blockIdx &&
   s.frac === (extra.frac ?? 0.10) && s.maskSeed === (extra.maskSeed ?? 11) && s.r === (extra.r ?? 1000) && s.g === (extra.g ?? 3) && s.seed === (extra.seed ?? 42));
-const expectedCards = s => [s.rPT, s.rSTL, s.rSTT, s.rMDV].map(fmt0);
+const expectedCards = s => [s.rPT, s.rSTL, s.rSTT, s.rMDV, s.rS0].map(fmt0);
 const T = { timeout: 90000 };
 /* snapshot numbers were recorded in Node; Chromium's V8 may round the last bit differently */
 function assertClose(actual, expected, what) {
@@ -56,10 +56,10 @@ test('every block length matches the original solver', T, async () => {
   const { page, errors, context } = await fresh();
   for (const [k, lab] of [[0, '30 min'], [1, '2 h'], [2, '6 h'], [3, '12 h'], [4, '1 day'], [6, '7 days']]) {
     await clickChip(page, 'blockChips', lab);
-    const res = await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT, r.n]; });
+    const res = await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT, r.rS0, r.n]; });
     const s = scen('real', k);
-    assertClose(res.slice(0, 4), [s.rPT, s.rMDV, s.rSTL, s.rSTT], lab);
-    assert.equal(res[4], s.n, lab + ' unknowns');
+    assertClose(res.slice(0, 5), [s.rPT, s.rMDV, s.rSTL, s.rSTT, s.rS0], lab);
+    assert.equal(res[5], s.n, lab + ' unknowns');
   }
   assert.deepEqual(errors, []);
   await context.close();
@@ -74,7 +74,8 @@ test('map: stations and edges open readings and drive the chart', T, async () =>
   ins = await insight(page, 'mapInsight');
   assert.equal(ins.pill, 'Station · jn');
   assert.ok(ins.focused);
-  assert.match(ins.body, /moves its record 25 min earlier/);
+  assert.match(ins.body, /leads the network mean by δ = −18\.6 min/);
+  assert.match(ins.body, /20 min earlier/);
   assert.match(await page.locator('#chartTitle').textContent(), /jn · Jeddah/);
   await page.locator('#map .stn[data-v="0"] .node').hover();
   assert.match(await page.locator('#tip').innerText(), /Solar Village/);
@@ -134,6 +135,14 @@ test('error cards and Table I rows open readings', T, async () => {
   assert.notEqual(sel, null);
   await page.locator('.card[data-m="MDV"]').click(); /* second click clears the focus */
   assert.equal((await insight(page, 'metricInsight')).focused, false);
+  assert.equal(await page.locator('#refTable tbody tr[data-k]').count(), 7);
+  await page.locator('#refTable tr[data-k="3"]').click();
+  ins = await insight(page, 'metricInsight');
+  assert.equal(ins.pill, 'Table I · 12 h');
+  assert.match(ins.body, /STMAC reaches 89\.9, 2\.0 below the climatology and 33\.5 below the Transformer/);
+  await page.locator('.card[data-m="S0"]').click();
+  assert.equal((await insight(page, 'metricInsight')).pill, 'Method · STMAC without prior (S0)');
+  assert.equal(await page.evaluate(() => window.STMAC.state.showS0), true, 'selecting the S0 card shows its line');
   await page.locator('#refTable tr[data-k="2"]').click();
   ins = await insight(page, 'metricInsight');
   assert.equal(ins.pill, 'Table I · 6 h');
@@ -141,7 +150,8 @@ test('error cards and Table I rows open readings', T, async () => {
   await page.waitForFunction(() => /^solved/.test(document.getElementById('status').textContent) && document.querySelector('#blockChips .chip.on').textContent === '6 h');
   ins = await insight(page, 'metricInsight');
   assert.match(ins.body, new RegExp('STMAC ' + scen('real', 2).rSTL.toFixed(1)));
-  assert.match(ins.body, /order of the three shared methods (matches|differs)/);
+  assert.match(ins.body, /order of the four methods run live (matches|differs)/);
+  assert.match(ins.body, /held-out column is the closer reference/);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -150,8 +160,9 @@ test('sweep: values match the original solver and points open readings', T, asyn
   const { page, errors, context } = await fresh();
   await page.locator('#sweepBtn').click();
   await page.waitForFunction(() => /^done/.test(document.getElementById('sweepStatus').textContent), null, { timeout: 60000 });
-  const rows = await page.evaluate(() => window.STMAC.state.sweep.rows.map(r => [r.pt, r.mdv, r.sl, r.st]));
-  for (let k = 0; k < 7; k++) { const s = scen('real', k); assertClose(rows[k], [s.rPT, s.rMDV, s.rSTL, s.rSTT], 'block ' + k); }
+  const rows = await page.evaluate(() => window.STMAC.state.sweep.rows.map(r => [r.pt, r.mdv, r.sl, r.st, r.s0]));
+  for (let k = 0; k < 7; k++) { const s = scen('real', k); assertClose(rows[k], [s.rPT, s.rMDV, s.rSTL, s.rSTT, s.rS0], 'block ' + k); }
+  assert.match((await insight(page, 'sweepInsight')).body, /Without its prior, the joint solver \(S0\) is below the climatology only at 30 min/);
   assert.equal((await insight(page, 'sweepInsight')).pill, 'Sweep overview');
   const b = await box(page, '#sweepOv');
   const x = b.x + 74 + (4.5 / 7) * (b.width - 88);
@@ -189,7 +200,7 @@ test('cost bars and header badges open readings', T, async () => {
   ins = await insight(page, 'costInsight');
   assert.equal(ins.pill, 'Cost · Transformer (trained)');
   assert.match(ins.body, /exceeds \$0\.90\/MWh/);
-  for (const [k, re] of [['solve', /timing breakdown/i], ['unknowns', /Half-bandwidth/], ['weights', /r = 1000, γ = 3/], ['params', /no training set/], ['tf', /136,000/]]) {
+  for (const [k, re] of [['solve', /timing breakdown/i], ['unknowns', /Half-bandwidth/], ['weights', /r = 1000, g = 3/], ['params', /no training set/], ['tf', /136,000/]]) {
     await page.locator('.badge[data-pop="' + k + '"]').click();
     assert.equal(await page.locator('#pop').isVisible(), true, k);
     assert.match(await page.locator('#pop .pop-body').innerText(), re, k);
@@ -227,7 +238,7 @@ test('synthetic weather reproduces the original solver', T, async () => {
   await page.locator('#dsChips .chip', { hasText: 'Synthetic' }).click();
   await page.waitForFunction(() => window.STMAC.state.res && window.STMAC.state.res.T === 8640 && /^solved/.test(document.getElementById('status').textContent));
   const s = scen('syn', 3);
-  assertClose(await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT]; }), [s.rPT, s.rMDV, s.rSTL, s.rSTT], 'synthetic');
+  assertClose(await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT, r.rS0]; }), [s.rPT, s.rMDV, s.rSTL, s.rSTT, s.rS0], 'synthetic');
   assert.deepEqual(errors, []);
   await context.close();
 });

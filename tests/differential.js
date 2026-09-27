@@ -1,5 +1,6 @@
 /* Differential check shared by the Node and browser tests (plain script, no imports).
- * Runs the original single-file solver (reference/single-file-solver.js) and the refactored
+ * Runs the original single-file solver (reference/single-file-solver.js, with the documented
+ * paper-alignment patches listed in its header) and the refactored
  * core on the same data in the same JavaScript engine, so the comparison is exact even though
  * different engines may round the last bit of Math functions differently. */
 function stmacChecksum(arrays, N, T) {
@@ -21,14 +22,15 @@ async function stmacDifferential(makeSingleFileSolver, Core, payload, scenarios)
     var pt = OLD.pureTemporal(U, M, OLD.AT);
     var stt = OLD.stmacJoint(U, M, graph.Lg, s.r, s.g, false, OLD.MDV_WIN);
     var mdv = OLD.climFill(U, M, stl.C);
+    var s0 = OLD.stmacJoint(U, M, graph.Lg, 10, 0, true, OLD.MDV_WIN, true);
     var flat = function (R) { var o = new Float64Array(N * T); for (var v = 0; v < N; v++) o.set(R[v], v * T); return o; };
     var oldRes = { rPT: OLD.rmseMasked(U, CS, pt, M), rMDV: OLD.rmseMasked(U, CS, mdv, M), rSTL: OLD.rmseMasked(U, CS, stl.R, M),
-      rSTT: OLD.rmseMasked(U, CS, stt.R, M), n: stl.n, bw: stl.bw, effFrac: mk.frac,
-      checksum: stmacChecksum([flat(stl.R), flat(pt), flat(stt.R), flat(mdv)], N, T) };
+      rSTT: OLD.rmseMasked(U, CS, stt.R, M), rS0: OLD.rmseMasked(U, CS, s0.R, M), n: stl.n, bw: stl.bw, effFrac: mk.frac,
+      checksum: stmacChecksum([flat(stl.R), flat(pt), flat(stt.R), flat(mdv), flat(s0.R)], N, T) };
     var ld = await engine.handle({ op: 'load', p: { kind: s.kind, seed: s.seed } });
     var o = await engine.handle({ op: 'scenario', p: { dsKey: ld.key, blockIdx: s.blockIdx, frac: s.frac, maskSeed: s.maskSeed, r: s.r, g: s.g } });
-    var newRes = { rPT: o.rPT, rMDV: o.rMDV, rSTL: o.rSTL, rSTT: o.rSTT, n: o.n, bw: o.bw, effFrac: o.effFrac,
-      checksum: stmacChecksum([o.STL, o.PT, o.STT, o.MDV], N, T) };
+    var newRes = { rPT: o.rPT, rMDV: o.rMDV, rSTL: o.rSTL, rSTT: o.rSTT, rS0: o.rS0, n: o.n, bw: o.bw, effFrac: o.effFrac,
+      checksum: stmacChecksum([o.STL, o.PT, o.STT, o.MDV, o.S0], N, T) };
     out.push({ scenario: s, old: oldRes, new: newRes });
   }
   return out;
