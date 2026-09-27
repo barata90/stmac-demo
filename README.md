@@ -9,9 +9,9 @@ Sciences, Universitas Syiah Kuala.
 
 ## What this is
 
-A single self-contained HTML file that runs the STMAC reconstruction pipeline
+A static page (HTML, CSS and JavaScript, no build step) that runs the STMAC reconstruction pipeline
 client-side, in JavaScript, on **70 days of the real 1999 Saudi NLR record**
-(Oct 22 – Dec 30, 1999; 11 stations, 5-minute GHI) embedded directly in the page.
+(Oct 22 – Dec 30, 1999; 11 stations, 5-minute GHI) shipped with the page in `assets/data/nlr1999.js`.
 Inject realistic block-shaped sensor outages (30 min – 7 days), and the solver
 repairs the field in well under a second — no server, no GPU, no training.
 
@@ -73,7 +73,7 @@ described in the paper (SERI-QC sentinel filtering). 0.87% of rows absent from t
 all-valid record were linearly interpolated before embedding. Timestamps are Saudi
 local clock (UTC+3); station identities were cross-verified by solar-noon inference
 from the data itself. Values are quantised to integer W/m². If redistribution terms
-of the underlying dataset require it, replace the embedded payload with the built-in
+of the underlying dataset require it, replace `assets/data/nlr1999.js` with the built-in
 synthetic mode (toggle in the UI) before public hosting.
 
 ## Analysis notebooks
@@ -90,9 +90,60 @@ experiments as they were first run and are kept for provenance; where their numb
 from the paper, notebooks `12` and `12b` are the ones that produced the published values.
 See `notebooks/README.md` for the pipeline map and data availability.
 
+## Reading the page interactively
+
+Every figure answers a click with a reading computed from the run on screen; paper figures
+are always labelled as such.
+
+- **Map:** hover a station or an edge for its numbers. Click a station for its solar noon,
+  longitude-sheaf shift, graph neighbours, per-station errors and cloudy-day count; click an
+  edge for its distance, weight and the correlation of the two stations' departures from
+  their climatology (solar-time aligned and at equal clock time).
+- **Reconstruction chart:** hover for the values of every series at that time; click to pin
+  a time and read the errors there, what the graph neighbours measured at the solar-aligned
+  time, and the day's clear-sky index. Without a pin, the box summarises the current gap and
+  links to the hardest and easiest gaps of the station.
+- **Error cards:** click a card for the per-station breakdown, MAE, bias and the range of the
+  method's estimates inside the gaps; the chosen series is highlighted in the chart.
+- **Table I rows:** click a row to compare the paper's figures with the live run at the same
+  block length, or to run that block length.
+- **Sweep:** hover a block length for all four errors; click a point for the ordering, the
+  margin over the climatology, the growth from 30 minutes and the Table I figures, with a
+  button that loads that block length into the reconstruction chart.
+- **Cost bars:** click a bar for its annual cost, the cost of 1 W/m² at the current levers,
+  the gap to STMAC and the penalty at which that gap passes $1M a year.
+- **Badges:** click for the timing breakdown of the last solve, the size of the banded
+  system, and the weights in use.
+
+The charts are keyboard accessible: focus a chart and use the arrow keys (the hint under each
+chart lists the keys).
+
+## Project layout
+
+```
+index.html                  markup only
+assets/css/stmac.css        styles
+assets/js/stmac-core.js     solver and statistics (no DOM), shared by the worker and the page
+assets/js/stmac-worker.js   Web Worker that runs the solver off the main thread
+assets/js/app.js            charts, map, controls and the interpretation layer
+assets/js/fx.js             static background (painted once)
+assets/data/nlr1999.js      the 70-day NLR window, int16, delta-encoded, base64
+assets/fonts/               Outfit and IBM Plex Mono (SIL OFL 1.1, licences included)
+assets/img/                 favicon and social preview
+```
+
+The solver code is unchanged from the single-file version; `stmac-core.js` reproduces its
+reconstructions and errors bit for bit. Each scenario runs in a Web Worker, and the
+block-length sweep is spread over up to three extra workers, so the page stays responsive
+while the factorisations run. When workers are unavailable the same code runs on the main
+thread.
+
 ## Run / deploy
 
-- **Locally:** open `index.html` in any modern browser. No build, no dependencies.
+- **Locally:** serve the folder, for example `python3 -m http.server 8000`, and open
+  `http://localhost:8000/`. Opening `index.html` straight from disk also works, but browsers
+  block workers and web fonts on `file://` pages, so the solver then runs on the main thread
+  and the fonts fall back to system fonts.
 - **GitHub Pages:** push this folder to a repo → Settings → Pages → deploy from
   branch `main`, root. The page appears at `https://<user>.github.io/<repo>/`.
 

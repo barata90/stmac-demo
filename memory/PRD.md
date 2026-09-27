@@ -75,3 +75,10 @@ None — static site, no auth.
 
 ## Deployment
 Static single-file. `index.html` can be served from any static host (GitHub Pages, Netlify drop, Cloudflare Pages). Preview locally with `python3 -m http.server 3000 --directory /app`.
+
+## Update 2026-09-27: performance and interactive readings
+- User request: "Kita perbaiki web app ini agar tidak berjalan lambat, serta interpretasi otomatisnya lebih interaktif ketika kita klik bar, titik, kotak, dan hal-hal lainnya ... menambahkan aset css, js, dan lainnya".
+- The page is no longer single-file: `index.html` (markup) + `assets/css`, `assets/js` (core, worker, app, fx), `assets/data/nlr1999.js` (delta-encoded payload, 116 KB gzip), `assets/fonts` (self-hosted, OFL), `assets/img` (favicon, social preview). See README "Project layout".
+- Three.js, backdrop-filter, blend-mode overlays, the animated conic border, animated filters and the custom cursor were removed; the background is one static canvas painted once. The solver runs in a Web Worker (sweep uses a small worker pool) with a main-thread fallback for `file://`.
+- The solver is bit-for-bit identical to the single-file version (checked on 11 scenarios, real and synthetic).
+- Every chart, card, table row, map station/edge and badge now opens a reading computed from the current run.
