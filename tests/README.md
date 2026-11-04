@@ -29,8 +29,15 @@ npm run perf                      # performance report (informational)
   several weights, fractions and masks).
 - Optimality test, independent of the old code: the STMAC and S0 reconstructions satisfy the
   zero-gradient condition of Eq. (6) on every unobserved cell (relative residual below 1e-9).
+- GraphTRSS + MDV (Table II, new in this version, so it has no single-file counterpart): the
+  reconstruction is the stationary point of its objective, M ∘ (A − Z) + ν (L + εI) A D_h D_hᵀ = 0
+  on every cell, observed or not (relative residual below 1e-9, at 30 minutes, 1 day and
+  7 days), and the check rejects a reconstruction with one cell off by 1 W/m² as well as the
+  STMAC reconstruction. Outside the suite it was also compared with
+  `notebooks/st_graph_recent.py` on the same data (largest difference 3.4e-10 W/m²).
 - Snapshot test: the core still gives the numbers recorded in
-  `reference/solver-reference.json`, within 1e-12 relative.
+  `reference/solver-reference.json`, within 1e-12 relative, and the sweep path gives the same
+  six RMSEs as the scenario path.
 - Invariants: STMAC and the climatology keep observed cells as measured; the correlation
   matrices are symmetric and bounded; the graph matches the single-file page.
 
@@ -40,8 +47,10 @@ npm run perf                      # performance report (informational)
 - The page solves in a Web Worker and shows the reference numbers; every block length, the
   sweep and the synthetic mode reproduce the original solver.
 - Every interactive reading opens and responds: map stations and edges (mouse and keyboard),
-  the reconstruction chart (hover, pin, keys), cards, Table I rows, sweep points, cost bars,
-  header badges.
+  the reconstruction chart (hover, pin, keys), cards, Table I and Table II rows, sweep points,
+  cost bars in both valuation views, the 2025 load chart, header badges.
+- The load asset decodes to the statistics of Section V-D (peak 77.08 GW, 428.7 TWh, 95 hours
+  near the peak) and the Table III view shows the paper's figures.
 - Rapid clicks and dataset switches end in a consistent state (latest request wins).
 - Phone layout has no horizontal overflow and touch opens readings; reduced motion turns the
   parallax off; `file://` falls back to the main thread with the same numbers.
@@ -68,7 +77,7 @@ a patch does not match exactly once:
 1. The longitude-sheaf shift is measured from the network-mean longitude (Section III-B)
    instead of the UTC+3 meridian. Every station moves by the same extra sample, so the
    relative shifts and the reconstructions are unchanged.
-2. RMSE is scored on unobserved cells at clock hours 8 to 16 (Section V-A and the notebooks'
+2. RMSE is scored on unobserved cells at clock hours 8 to 16 (Section V-B and the notebooks'
    `DAYTIME` mask) instead of on cells with clear-sky GHI above 20 W/m².
 3. An optional zero prior, for the ablation S0 of Table I (C = 0, g = 0, r = 10).
 

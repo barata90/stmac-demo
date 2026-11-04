@@ -48,9 +48,9 @@ for (const s of reference.scenarios) {
     for (const k of ['rPT', 'rMDV', 'rSTL', 'rSTT', 'rS0']) assert.ok(close(o[k], s[k]), `${k}: ${o[k]} vs reference ${s[k]}`);
     /* the sweep path must give the same numbers as the scenario path */
     const sw = await engine.handle({ op: 'sweepBlock', p: Object.assign({ k: s.blockIdx }, p) });
-    assert.deepEqual([sw.pt, sw.mdv, sw.sl, sw.st, sw.s0], [o.rPT, o.rMDV, o.rSTL, o.rSTT, o.rS0]);
+    assert.deepEqual([sw.pt, sw.mdv, sw.sl, sw.st, sw.s0, sw.gt], [o.rPT, o.rMDV, o.rSTL, o.rSTT, o.rS0, o.rGT]);
     /* per-station statistics use the same cells; totals agree up to summation order */
-    for (const [m, r] of [['PT', 'rPT'], ['MDV', 'rMDV'], ['STL', 'rSTL'], ['STT', 'rSTT'], ['S0', 'rS0']]) {
+    for (const [m, r] of [['PT', 'rPT'], ['MDV', 'rMDV'], ['STL', 'rSTL'], ['STT', 'rSTT'], ['S0', 'rS0'], ['GT', 'rGT']]) {
       assert.ok(close(o.stats[m].rmse, o[r], 1e-9), m + ' stats rmse');
       assert.equal(o.stats[m].st.reduce((a, x) => a + x.n, 0), o.stats[m].n);
     }
@@ -97,6 +97,53 @@ for (const [label, blockIdx] of [['30 min', 0], ['1 day', 4], ['7 days', 6]]) {
     for (const [i, name] of ['STMAC longitude', 'STMAC trivial', 'S0'].entries()) assert.ok(rel[i] < 1e-9, name + ' relative residual ' + rel[i]);
   });
 }
+
+/* GraphTRSS + MDV (Table II): the reconstruction must be the stationary point of
+   1/2 ||M o (A - Z)||^2 + nu/2 tr((A D_h)' (L_g + eps I) (A D_h)) with A = U_hat - C and
+   Z = U - C, i.e. M o (A - Z) + nu (L_g + eps I) A (D_h D_h') = 0 on every cell, observed or not. */
+function sobolevResidual(o, U, M, C, nu, eps) {
+  const T = Core.grid().T, { Lg } = Core.buildGraph();
+  const A = [];
+  for (let v = 0; v < N; v++) { const a = new Float64Array(T); for (let t = 0; t < T; t++) a[t] = o[v * T + t] - C[v][t]; A.push(a); }
+  let worst = 0, scale = 0;
+  for (let v = 0; v < N; v++) for (let t = 0; t < T; t++) {
+    let res = M[v * T + t] ? A[v][t] - (U[v][t] - C[v][t]) : 0;
+    for (let w = 0; w < N; w++) {
+      const s = Lg[v][w] + (v === w ? eps : 0); if (s === 0) continue;
+      const a = A[w], d = (t > 0 ? a[t] - a[t - 1] : 0) - (t < T - 1 ? a[t + 1] - a[t] : 0); /* (A D_h D_h')_t */
+      res += nu * s * d;
+    }
+    worst = Math.max(worst, Math.abs(res)); scale = Math.max(scale, Math.abs(U[v][t]));
+  }
+  return worst / Math.max(1, scale);
+}
+for (const [label, blockIdx] of [['30 min', 0], ['1 day', 4], ['7 days', 6]]) {
+  test('GraphTRSS + MDV is the exact minimiser of its objective at ' + label, async () => {
+    const engine = Core.createEngine(() => payload);
+    const ld = await engine.handle({ op: 'load', p: { kind: 'real', seed: 42 } });
+    const o = await engine.handle({ op: 'scenario', p: { dsKey: ld.key, blockIdx, frac: 0.1, maskSeed: 11, r: 1000, g: 3 } });
+    const U = Core.decodeReal(payload), T = ld.grid.T, Mv = [];
+    for (let v = 0; v < N; v++) Mv.push(o.M.subarray(v * T, (v + 1) * T));
+    const C = Core.mdvPrior(U, Mv, Core.MDV_WIN);
+    assert.equal(o.gtN, N * T, 'every cell is an unknown');
+    assert.equal(o.gtBw, 2 * N - 1, 'half-bandwidth 2N - 1');
+    const rel = sobolevResidual(o.GT, U, o.M, C, Core.GT_NU, Core.GT_EPS);
+    assert.ok(rel < 1e-9, 'relative residual ' + rel);
+    assert.ok(o.rGT > 0 && Number.isFinite(o.rGT));
+  });
+}
+test('the GraphTRSS residual check catches a wrong reconstruction', async () => {
+  const engine = Core.createEngine(() => payload);
+  const ld = await engine.handle({ op: 'load', p: { kind: 'real', seed: 42 } });
+  const o = await engine.handle({ op: 'scenario', p: { dsKey: ld.key, blockIdx: 2, frac: 0.1, maskSeed: 11, r: 1000, g: 3 } });
+  const U = Core.decodeReal(payload), T = ld.grid.T, Mv = [];
+  for (let v = 0; v < N; v++) Mv.push(o.M.subarray(v * T, (v + 1) * T));
+  const C = Core.mdvPrior(U, Mv, Core.MDV_WIN);
+  const bad = o.GT.slice(); bad[3 * T + 5000] += 1; /* one cell off by 1 W/m2 */
+  assert.ok(sobolevResidual(bad, U, o.M, C, Core.GT_NU, Core.GT_EPS) > 1e-4);
+  /* and the STMAC reconstruction is not a minimiser of the GraphTRSS objective */
+  assert.ok(sobolevResidual(o.STL, U, o.M, C, Core.GT_NU, Core.GT_EPS) > 1e-4);
+});
 
 test('STMAC and the climatology keep observed cells as measured', async () => {
   const engine = Core.createEngine(() => payload);

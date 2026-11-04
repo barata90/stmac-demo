@@ -17,7 +17,7 @@
 :root{
   --bg:#07090e;--panel:#10141d;--panel2:#151b26;--line:#26303e;--line2:#3a4658;
   --ink:#f8fafc;--muted:#94a3b8;--faint:#64748b;
-  --solar:#d4af37;--stmac:#00f5d4;--pt:#fb7185;--triv:#94a3b8;--mdv:#7fc97f;--tf:#c9a2ff;--s0:#60a5fa;
+  --solar:#d4af37;--stmac:#00f5d4;--pt:#fb7185;--triv:#94a3b8;--mdv:#7fc97f;--tf:#c9a2ff;--s0:#60a5fa;--gt:#fb923c;--tvm:#d6a56b;
   --gold:#d4af37;--gold-hi:#f5d76e;--gold-glow:rgba(212,175,55,.42);--teal:#00f5d4;--teal-glow:rgba(0,245,212,.35);
   --disp:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;
   --body:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -228,9 +228,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .card.stt .val{color:var(--triv)}
 .card.adv .val{color:var(--mdv);text-shadow:0 0 22px rgba(127,201,127,.3)}
 .card.adv{background:linear-gradient(180deg,rgba(127,201,127,.09),rgba(127,201,127,.02))}
-.card.s0{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 16px}
-.card.s0 .val{font-size:22px;margin-top:0;color:var(--s0)}
-.card.s0 .more{position:static;align-self:center;white-space:nowrap}
+.card.wide{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 16px}
+.card.wide .val{font-size:22px;margin-top:0;white-space:nowrap}
+.card.wide .more{position:static;align-self:center;white-space:nowrap}
+.card.s0 .val{color:var(--s0)}
+.card.gt .val{color:var(--gt);text-shadow:0 0 22px rgba(251,146,60,.3)}
 .cards.stale .card{opacity:.55}
 
 /* ---------- reference table ---------- */
@@ -246,6 +248,8 @@ table.ref tr[data-k]{cursor:pointer;transition:background-color .15s}
 table.ref tr[data-k]:hover,table.ref tr[data-k]:focus-visible{background:linear-gradient(90deg,rgba(212,175,55,.06),rgba(0,245,212,.06));outline:none}
 table.ref tr.sel{background:linear-gradient(90deg,rgba(0,245,212,.12),rgba(212,175,55,.06))}
 table.ref tr.sel td:first-child{color:var(--teal)}
+table.ref tr.mean td{border-top:1px solid var(--line2);color:var(--faint)}
+table.ref tr.mean td.win{color:var(--teal)}
 .ref-cap{font-size:11.5px;color:var(--faint);margin-top:8px}
 
 /* ---------- interpretation callouts ---------- */
@@ -307,6 +311,14 @@ table.ref tr.sel td:first-child{color:var(--teal)}
 /* ---------- econ ---------- */
 .econ-grid{display:grid;grid-template-columns:.85fr 1fr 1fr;gap:22px}
 @media(max-width:980px){.econ-grid{grid-template-columns:1fr}}
+.paper-notes{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.paper-notes .ref-list{columns:2 360px;column-gap:34px}
+.paper-notes .ref-list li{break-inside:avoid}
+.load-row{display:grid;grid-template-columns:1.6fr 1fr;gap:22px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.load-row .insight{margin-top:24px}
+@media(max-width:980px){.load-row{grid-template-columns:1fr}.load-row .insight{margin-top:4px}}
+#loadOv.hot{cursor:pointer}
+.chip[disabled]{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
 .headline-save{margin:14px 0 6px}
 .headline-save .num{font-family:var(--mono);font-size:38px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;
   background:linear-gradient(115deg,#ffe0a3 0%,#ffb648 55%,#ff9d2e 100%);-webkit-background-clip:text;background-clip:text;color:transparent}

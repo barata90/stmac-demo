@@ -56,10 +56,13 @@ test('every block length matches the original solver', T, async () => {
   const { page, errors, context } = await fresh();
   for (const [k, lab] of [[0, '30 min'], [1, '2 h'], [2, '6 h'], [3, '12 h'], [4, '1 day'], [6, '7 days']]) {
     await clickChip(page, 'blockChips', lab);
-    const res = await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT, r.rS0, r.n]; });
+    const res = await page.evaluate(() => { const r = window.STMAC.state.res; return [r.rPT, r.rMDV, r.rSTL, r.rSTT, r.rS0, r.n, r.rGT]; });
     const s = scen('real', k);
     assertClose(res.slice(0, 5), [s.rPT, s.rMDV, s.rSTL, s.rSTT, s.rS0], lab);
     assert.equal(res[5], s.n, lab + ' unknowns');
+    assert.ok(Number.isFinite(res[6]) && res[6] > 0, lab + ' GraphTRSS + MDV');
+    /* as in Table II: GraphTRSS + MDV is below STMAC on short gaps */
+    if (k <= 1) assert.ok(res[6] < res[2], lab + ': GraphTRSS + MDV ' + res[6] + ' vs STMAC ' + res[2]);
   }
   assert.deepEqual(errors, []);
   await context.close();
@@ -143,6 +146,22 @@ test('error cards and Table I rows open readings', T, async () => {
   await page.locator('.card[data-m="S0"]').click();
   assert.equal((await insight(page, 'metricInsight')).pill, 'Method · STMAC without prior (S0)');
   assert.equal(await page.evaluate(() => window.STMAC.state.showS0), true, 'selecting the S0 card shows its line');
+  await page.locator('.card[data-m="GT"]').click();
+  ins = await insight(page, 'metricInsight');
+  assert.equal(ins.pill, 'Method · GraphTRSS + MDV');
+  assert.match(ins.body, /every cell is an unknown, 221,760 in all, half-bandwidth 21/);
+  assert.equal(await page.evaluate(() => window.STMAC.state.showGT), true, 'selecting the GraphTRSS card shows its line');
+  assert.match(await page.locator('#cGT .n').textContent(), /^\d+$/);
+  assert.equal(await page.locator('#refTable2 tbody tr[data-k]').count(), 7);
+  await page.locator('#refTable2 tr[data-k="3"]').click();
+  ins = await insight(page, 'metricInsight');
+  assert.equal(ins.pill, 'Table II · 12 h');
+  assert.match(ins.body, /GraphTRSS \+ MDV is below STMAC \(p ≤ 0\.027\) here/);
+  assert.equal(await page.locator('#refTable2 tr[data-k="3"]').getAttribute('class'), 'sel');
+  await page.locator('#refTable2 tr[data-k="5"]').click();
+  ins = await insight(page, 'metricInsight');
+  assert.match(ins.body, /From the scenario on screen .*GraphTRSS \+ MDV \d+\.\d, STMAC \d+\.\d/);
+  assert.match(ins.body, /level with STMAC \(p = 0\.63\)/);
   await page.locator('#refTable tr[data-k="2"]').click();
   ins = await insight(page, 'metricInsight');
   assert.equal(ins.pill, 'Table I · 6 h');
@@ -163,6 +182,8 @@ test('sweep: values match the original solver and points open readings', T, asyn
   const rows = await page.evaluate(() => window.STMAC.state.sweep.rows.map(r => [r.pt, r.mdv, r.sl, r.st, r.s0]));
   for (let k = 0; k < 7; k++) { const s = scen('real', k); assertClose(rows[k], [s.rPT, s.rMDV, s.rSTL, s.rSTT, s.rS0], 'block ' + k); }
   assert.match((await insight(page, 'sweepInsight')).body, /Without its prior, the joint solver \(S0\) is below the climatology only at 30 min/);
+  assert.match((await insight(page, 'sweepInsight')).body, /GraphTRSS \+ MDV is below STMAC at 30 min, 2 h, 6 h, 12 h, 1 day and above it at 3 days, 7 days/);
+  assert.ok(await page.evaluate(() => window.STMAC.state.sweep.rows.every(r => Number.isFinite(r.gt))));
   assert.equal((await insight(page, 'sweepInsight')).pill, 'Sweep overview');
   const b = await box(page, '#sweepOv');
   const x = b.x + 74 + (4.5 / 7) * (b.width - 88);
@@ -173,6 +194,7 @@ test('sweep: values match the original solver and points open readings', T, asyn
   let ins = await insight(page, 'sweepInsight');
   assert.match(ins.pill, /^Sweep · 1 day · /);
   assert.match(ins.body, /Paper Table I at 1 day/);
+  assert.match(ins.body, /Paper Table II at 1 day \(ten shared masks\): GraphTRSS \+ MDV 151\.0, STMAC 155\.5/);
   await page.locator('#sweepOv').focus();
   await page.keyboard.press('ArrowLeft');
   assert.match((await insight(page, 'sweepInsight')).pill, /^Sweep · 12 h · /);
@@ -185,28 +207,78 @@ test('sweep: values match the original solver and points open readings', T, asyn
   await context.close();
 });
 
-test('cost bars and header badges open readings', T, async () => {
+test('Table III view, first-order view and cost bars open readings', T, async () => {
   const { page, errors, context } = await fresh();
+  const bar = i => 20 + i * 58 + 12; /* y of the i-th bar inside the cost chart */
+  assert.equal(await page.locator('#saveNum').textContent(), '$2.00M');
+  assert.match(await page.locator('#econInterp').innerText(), /\$1\.88M less than the trained Transformer and \$0\.51M less than the station climatology/);
   const b = await box(page, '#costOv');
-  await page.mouse.click(b.x + 30, b.y + 16 + 1 * 62 + 10);
+  await page.mouse.click(b.x + 30, b.y + bar(2));
   let ins = await insight(page, 'costInsight');
+  assert.equal(ins.pill, 'Cost · STMAC');
+  assert.match(ins.body, /costs \$2\.00M a year in the simulated system/);
+  assert.match(ins.body, /3\.9 to 12\.8 times the simulated 40 GW cost/);
+  await page.mouse.click(b.x + 30, b.y + bar(0));
+  ins = await insight(page, 'costInsight');
+  assert.equal(ins.pill, 'Cost · Transformer (trained)');
+  assert.match(ins.body, /118 thousand barrels/);
+  for (const [lab, val] of [['19.3 GW (2026) · 3+5 reserve · $69', '$0.28M'], ['40 GW · uncertainty reserve · $69', '$4.21M'], ['40 GW · 3+5 reserve · $96', '$2.69M'], ['40 GW · uncertainty reserve · $96', '$6.98M']]) {
+    await page.locator('#ucChips .chip', { hasText: lab }).click();
+    assert.equal(await page.locator('#saveNum').textContent(), val, lab);
+  }
+  assert.match(await page.locator('#econInterp').innerText(), /\$7\.01M less than the trained Transformer and \$1\.15M less than the station climatology/);
+  /* first-order model on the live RMSEs */
+  await page.locator('#econView .chip[data-view="eq"]').click();
+  assert.equal(await page.locator('#eqCtl').isVisible(), true);
+  assert.equal(await page.locator('#ucCtl').isVisible(), false);
+  await page.mouse.click(b.x + 30, b.y + bar(1));
+  ins = await insight(page, 'costInsight');
   assert.equal(ins.pill, 'Cost · Station climatology (MDV)');
   assert.match(ins.body, /turns every 1 W\/m² of error into \$0\.05M a year/);
   await page.locator('#penSlider').evaluate(el => { el.value = '10'; el.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.waitForTimeout(80);
-  assert.match((await insight(page, 'costInsight')).body, /\$10\/MWh turns every 1 W\/m² of error into \$0\.18M a year/);
+  assert.match((await insight(page, 'costInsight')).body, /\$10\/MWh, turns every 1 W\/m² of error into \$0\.18M a year/);
+  await page.mouse.click(b.x + 30, b.y + bar(4));
+  assert.equal((await insight(page, 'costInsight')).pill, 'Cost · GraphTRSS + MDV');
   await page.locator('#srcPaper').click();
-  await page.mouse.click(b.x + 30, b.y + 16 + 1 * 62 + 10);
+  await page.mouse.click(b.x + 30, b.y + bar(0));
   ins = await insight(page, 'costInsight');
   assert.equal(ins.pill, 'Cost · Transformer (trained)');
-  assert.match(ins.body, /exceeds \$0\.90\/MWh/);
-  for (const [k, re] of [['solve', /timing breakdown/i], ['unknowns', /Half-bandwidth/], ['weights', /r = 1000, g = 3/], ['params', /no training set/], ['tf', /136,000/]]) {
+  assert.match(ins.body, /exceeds \$0\.89\/MWh/);
+  assert.match(ins.body, /unit-commitment simulation the same method costs \$3\.88M/);
+  for (const [k, re] of [['solve', /GraphTRSS \+ MDV \(all 221,760 cells\)/], ['unknowns', /Half-bandwidth/], ['weights', /r = 1000, g = 3/], ['params', /no training set/], ['tf', /136,075/]]) {
     await page.locator('.badge[data-pop="' + k + '"]').click();
     assert.equal(await page.locator('#pop').isVisible(), true, k);
     assert.match(await page.locator('#pop .pop-body').innerText(), re, k);
   }
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#pop').isHidden(), true);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('2025 load chart: statistics of Section V-D, hover and click readings', T, async () => {
+  const { page, errors, context } = await fresh();
+  let ins = await insight(page, 'loadInsight');
+  assert.equal(ins.pill, 'Load overview');
+  assert.match(ins.body, /77\.08 GW/);
+  assert.match(ins.body, /428\.7 TWh/);
+  assert.match(ins.body, /95 hours lie above the dashed line at 73\.36 GW/);
+  assert.match(ins.body, /88 lie within an unscaled 3 GW/);
+  const b = await box(page, '#loadOv');
+  const xDay = d => b.x + 54 + (d + 0.5) / 365 * (b.width - 64);
+  await page.mouse.move(xDay(234), b.y + b.height / 2);
+  await page.waitForTimeout(100);
+  assert.match(await page.locator('#tip').innerText(), /Aug 23[\s\S]*Daily peak\s*77\.08 GW at 13:00/);
+  await page.mouse.click(xDay(234), b.y + b.height / 2);
+  ins = await insight(page, 'loadInsight');
+  assert.equal(ins.pill, 'Load · Aug 23');
+  assert.match(ins.body, /Peak rank\s*1 of 365/i);
+  await page.locator('#loadOv').focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal((await insight(page, 'loadInsight')).pill, 'Load · Aug 24');
+  await page.keyboard.press('Escape');
+  assert.equal((await insight(page, 'loadInsight')).pill, 'Load overview');
   assert.deepEqual(errors, []);
   await context.close();
 });

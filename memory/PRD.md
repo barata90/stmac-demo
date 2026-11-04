@@ -82,3 +82,9 @@ Static single-file. `index.html` can be served from any static host (GitHub Page
 - Three.js, backdrop-filter, blend-mode overlays, the animated conic border, animated filters and the custom cursor were removed; the background is one static canvas painted once. The solver runs in a Web Worker (sweep uses a small worker pool) with a main-thread fallback for `file://`.
 - The solver is bit-for-bit identical to the single-file version (checked on 11 scenarios, real and synthetic).
 - Every chart, card, table row, map station/edge and badge now opens a reading computed from the current run.
+
+## Update 2026-11-04: aligned with the camera-ready paper (v5)
+- User request: "Karena ada penyesuaian pada paper finalku.. Maka selanjutnya kita lakukan penyesuaian pada web app-nya" (paper v5 adds recent graph baselines, E14, and a unit-commitment valuation, E15).
+- GraphTRSS + MDV (Table II, nu = 1, eps = 1, beta = 1) runs live next to STMAC: sixth error card, chart and sweep series, readings. Exact banded solve over all N x T cells, half-bandwidth 2N - 1; matches `notebooks/st_graph_recent.py` to 3.4e-10 W/m2.
+- Table II quoted with clickable rows. Vision 2030 panel rebuilt around Table III (19.3/40 GW, 3+5/UR reserve, 69/96 USD/bbl); the first-order model stays as a live comparison. New 2025 hourly load chart (`assets/data/load2025.js`, from E15_hourly_load_estimate_2025.csv).
+- Text: three authors in the citation, v5 section and table numbers, Transformer 136,075 parameters and 47 min training, v4-only claims removed (52.7 GW scenarios, cloudy stress year, settlement variants, satellite planning curve, [0, 1400] clipping attributed to the paper).
