@@ -1,40 +1,62 @@
 # Analysis notebooks
 
-The complete experimental pipeline behind the paper, in execution order. Cell outputs are
-preserved **exactly as produced by the runs that generated the paper's reported numbers**;
-markdown commentary was editorially revised for publication, with code cells and their
-outputs left byte-for-byte unmodified.
+The experimental pipeline behind the paper, in execution order. Cell outputs are preserved
+as produced by the runs that generated the reported numbers. Where a notebook was revised,
+the `(rev)` or `(rev2)` copy is the later run and the unmarked copy is kept for provenance.
 
-| Notebook | What it does | Paper mapping |
+The paper mapping below follows the camera-ready version (v5): Section III Preliminaries,
+IV Proposed STMAC framework, V Experimental setup, VI Results and discussion; Tables I to III
+and Fig. 1. Several notebooks carry the section numbers of an earlier draft in their own
+headers; this table takes precedence.
+
+| Notebook | What it does | Paper (v5) |
 |---|---|---|
-| `01_E1_MAC_1D_sanity_check` | Downloads and parses the Solar Village record (1998–2002), validates temporal MAC on synthetic and real GHI, ablates PSNR/RMSE vs sampling rate | Section V-A (E1) |
-| `02_E2_spatial_MAC_Saudi_network` | Downloads the remaining 10 stations for 1999, builds the kNN geographic graph, benchmarks spatial-only methods (graph MAC, kriging, IDW), Sakaka case study | Section V-A (E2); graph used in Sections III–IV |
-| `03_E3_STMAC_cellular_sheaf` | Formulates STMAC on the cellular sheaf, longitude restriction maps, density sweep, trivial-vs-longitude comparison | Sections III–IV, Section V |
-| `03b_E3_block_missingness_headline` | SERI-QC `9900` sentinel cleanup; the block-length sweep that anchors the paper | Section V-B (Fig. 1, Table I) |
-| `04_E4_transformer_baseline` | 136k-parameter multi-station Transformer, trained 25 epochs; head-to-head on the identical block sweep | Section V-C (Table I) |
-| `05_E5_higher_order_persistence` | Persistence-diagram quality control (superseded in part by E5b) | Section VI-B |
-| `05b_E5_persistence_FIX` | Correction of the Wasserstein convention used in E5 | Section VI-B |
-| `05c_E5_block_missing_persistence` | Persistence on the block-missing scenario; surfaces the climatology bias of persistence-W1 | Section VI-B (limitation) |
-| `06_E6_vision2030_economic_impact` | Eq. (5) economic translation, three Vision 2030 scenarios, tornado sensitivity | Section V-D (Table II, Fig. 3), Section VI-A |
+| `01_E1_MAC_1D_sanity_check` | Downloads and parses the Solar Village record (1998 to 2002) and checks the temporal smoother (MAC) on synthetic and real GHI | Section III-A (temporal smoother); pure-temporal baseline |
+| `02_E2_spatial_MAC_Saudi_network` | Downloads the other 10 stations for 1999, builds the k-NN geographic graph, benchmarks spatial-only methods | Section III-B (graph construction) |
+| `03_E3_STMAC_cellular_sheaf` | First formulation of STMAC on the cellular sheaf, longitude restriction maps, trivial against longitude sheaf | Sections III-B, III-C, IV (first version) |
+| `03b_E3_block_missingness_headline` | SERI-QC `9900` sentinel cleanup and the first block-length sweep | Section V-A (data cleaning); superseded by E12 for the numbers |
+| `04_E4_transformer_baseline` | The 136,075-parameter multi-station Transformer, trained 25 epochs | Section V-C (TF baseline) |
+| `05_E5_higher_order_persistence`, `05b`, `05c` | Persistence-diagram quality control | Not in the final paper |
+| `06_E6_vision2030_economic_impact` | First-order economic translation of an earlier draft | Superseded by E15 |
+| `07_E7_statistical_significance` | Replicate mask sampling, paired Wilcoxon tests, Holm correction | Section V-B (protocol and tests) |
+| `08_E8_synthetic_multiscale_network` | Synthetic multi-scale networks | Background for Section IV-D |
+| `09a_E7TF_transformer_paired_evaluation` | Paired evaluation of the Transformer, held-out 7 Nov to 31 Dec period | Table I (held-out columns) |
+| `09b_E9_graph_baselines` | Low-rank completion and GRMF, decomposition by sky condition | Section VI-D |
+| `09c_E9B_alignment_transfer` | Does the longitude restriction map transfer to other solvers | Section VI-C |
+| `10_E10_economic_model_error` | Error of the first-order economic model of an earlier draft | Superseded by E15 |
+| `11_E11_modern_network` | NSRDB Meteosat field for 2019 at the 11 NLR sites and at 25 and 50 sites | Section VI-E |
+| `12_E12_joint_solver_rerun` | The corrected joint solver, the rerun of every experiment against it, station climatology, runtime scaling (0.54 s, 5.8 s, N^1.08) | Table I, Fig. 1, Sections IV-D, VI-A, VI-D |
+| `12b_E12b_anomaly_checks` | Sheaf ablation inside the climatology formulation, weight selection on the satellite field | Sections VI-C, VI-E |
+| `13_E13_gambar_dan_cek_angka` | Rebuilds Fig. 1 from the stored CSVs and cross-checks quoted numbers | Fig. 1 |
+| `14_E14_recent_graph_baselines` | TVGSR, GraphTRSS and RTVGSR, on raw irradiance and on the MDV anomalies, with block cross-validated weights | Table II, Section VI-B |
+| `15_E15_power_system_valuation` | Hourly 2025 load estimate, clustered unit commitment with real-time redispatch, cost of the PV-estimate error per method | Section V-D, Table III, Section VI-F |
+
+Helper modules used by E14 and E15:
+
+- `st_graph_recent.py`: TVGSR, GraphTRSS (exact banded solve) and RTVGSR (primal-dual
+  splitting and ADMM). The live console's GraphTRSS + MDV solver reproduces its
+  `graphtrss(..., prior=C)` to within 4e-10 W/m² on the 70-day window.
+- `sa_load_model.py`: hierarchical moment matching of the 2025 hourly load.
+- `sa_uc_model.py`: the two-stage unit-commitment model (day-ahead MILP, real-time redispatch).
+- `sa_e15_runner.py`: builds the inputs and runs the E15 cases with resumable output.
 
 ## Data availability
 
-The raw observations are the NLR–KACST Saudi solar-radiation network monthly files
-(1998–2003), publicly downloadable; notebooks E1–E2 fetch them directly from a URL
-manifest and parse the SERI-QC format from scratch. Derived artefacts
-(`multistation_1999_cleaned.parquet`, graph matrices, `stations.json`) are regenerated
-by running E1 → E2 → E3b in order. They are not committed to this repository; the
-pipeline is the reproducible object.
+The raw observations are the NLR Saudi solar-radiation network monthly files (1998 to 2003),
+publicly downloadable; notebooks E1 and E2 fetch them from a URL manifest and parse the
+SERI-QC format. Derived artefacts (`multistation_1999_cleaned.parquet`, graph matrices,
+`stations.json`) are regenerated by running E1, E2 and E3b in order. E11 reads the NSRDB
+Meteosat Prime Meridian product for 2019. E15 reads ECRA monthly regional load (KAPSARC data
+portal) and the 2025 statistics cited in Section V-D. Derived data are not committed to this
+repository; the pipeline is the reproducible object.
+
+The live console embeds two small derived files: a 70-day window of the cleaned 1999 record
+(`assets/data/nlr1999.js`) and the main realisation of the E15 hourly load estimate
+(`assets/data/load2025.js`, from `E15_hourly_load_estimate_2025.csv`).
 
 ## Environment
 
-Python ≥ 3.10 with `numpy`, `scipy`, `pandas`, `pyarrow`, `matplotlib`; additionally
-`torch` (CPU is sufficient) for E4 and `gudhi` for E5–E5c. No GPU is required anywhere
-in the pipeline — a point the paper makes deliberately.
-
-## Relation to the live demo
-
-The demo at the repository root (`index.html`) re-implements the E3b solver in
-JavaScript with a proximal-alternating variant and integer solar-time shifts, embedding
-a 70-day subset of the same record; see the demo's in-page notes for the exact
-correspondences and differences.
+Python 3.10 or later with `numpy`, `scipy`, `pandas`, `pyarrow` and `matplotlib`; `torch`
+(CPU is enough) for E4; `gudhi` for E5. E15 solves its mixed-integer programs with HiGHS
+through `scipy.optimize.milp`.
+No GPU is needed anywhere in the pipeline.

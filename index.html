@@ -16,10 +16,11 @@
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="assets/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/css/stmac.css?v=20260927">
-<script defer src="assets/js/stmac-core.js?v=20260927"></script>
-<script defer src="assets/js/app.js?v=20260927"></script>
-<script defer src="assets/js/fx.js?v=20260927"></script>
+<link rel="stylesheet" href="assets/css/stmac.css?v=20261104">
+<script defer src="assets/data/load2025.js?v=20261104"></script>
+<script defer src="assets/js/stmac-core.js?v=20261104"></script>
+<script defer src="assets/js/app.js?v=20261104"></script>
+<script defer src="assets/js/fx.js?v=20261104"></script>
 </head>
 <body>
 <canvas id="fx-bg" aria-hidden="true" data-testid="fx-3d-background"></canvas>
@@ -31,14 +32,14 @@
   <p class="sub" data-testid="hero-description">Training-free solar resource reconstruction via cellular sheaves. Break the Saudi sensor
   network with realistic block outages, then watch the sheaf solver repair it — right here, in your browser.
   No GPU, no training data, no learned weights — and the default dataset is 70 days of the <b>real 1999
-  Saudi NLR record</b>, shipped with this page. The solver here is the one in the paper: a single sparse space-time system on departures from each station's diurnal climatology.</p></div>
+  Saudi NLR record</b>, shipped with this page. The solver here is the one in the paper: a single sparse space-time system on departures from each station's diurnal climatology. Next to it runs GraphTRSS + MDV, the strongest of the recent graph baselines the paper compares against.</p></div>
   <div class="hero-stage" id="heroStage" data-testid="hero-3d-visual" aria-label="Abstract 3D solar network visualization"><div class="hero-orbit"><i></i></div><div class="orbit-b"><i></i></div><span class="hero-caption">space · time · signal</span></div></div>
   <div class="console-strip">
     <button type="button" class="badge solve" data-pop="solve" aria-haspopup="dialog" title="Wall-clock time for the full STMAC reconstruction of the current scenario, measured live in your browser"><span class="dot"></span>Last solve <b id="bSolve">—</b></button>
     <button type="button" class="badge" data-pop="params" aria-haspopup="dialog" title="STMAC learns nothing in advance: no training set, no learned weights, no GPU — the paper’s central claim">Trained parameters <b>0</b></button>
     <button type="button" class="badge" data-pop="weights" aria-haspopup="dialog" title="The two scalar weights of Eq. (5), r = αt/αs and g = γ/αs, chosen once by block cross-validation on observed cells — never on the withheld values">Weights <b id="bWeights">r = 1000 · g = 3</b></button>
     <button type="button" class="badge" data-pop="unknowns" aria-haspopup="dialog" title="Number of unobserved cells in the current scenario; they are the unknowns of the sparse system of Eq. (6), solved exactly by one banded Cholesky factorisation">Unknown cells solved <b id="bPat">—</b></button>
-    <button type="button" class="badge contrast" data-pop="tf" aria-haspopup="dialog" title="The deep-learning baseline of Section V-C: needs curated training data, 25 epochs, and retraining whenever the sensor network changes">Transformer baseline needs&nbsp;<b>136,000 params · 25 epochs · retrain on every topology change</b></button>
+    <button type="button" class="badge contrast" data-pop="tf" aria-haspopup="dialog" title="The deep-learning baseline of Section V-C: needs curated training data, 25 epochs, and retraining whenever the sensor network changes">Transformer baseline needs&nbsp;<b>136,075 params · 25 epochs · retrain on every topology change</b></button>
   </div>
 </div></header>
 
@@ -49,11 +50,11 @@
     <div class="g-body">
       <div><span class="num">1.</span><b>The map</b> shows 11 real sensors that measured sunlight across Saudi Arabia through 1999. Lines join neighbouring stations that lend each other information during repair — thicker line, stronger coupling.</div>
       <div><span class="num">2.</span><b>Break the network</b> deletes data on purpose, imitating how sensors really fail (comms loss, maintenance, calibration drift): in contiguous blocks, not random specks. “Block length” is how long each blackout lasts — the paper’s key stress test.</div>
-      <div><span class="num">3.</span><b>The reconstruction chart</b>: amber is what the sensor truly measured; the shaded band is what we deleted; rose is the conventional repair (each station smoothing its own history); green is the station climatology; teal is STMAC; blue (switch it on in the legend) is STMAC without its climatological prior. The closer teal hugs amber inside the band, the better the repair.</div>
-      <div><span class="num">4.</span><b>The error cards</b> average the mistake, in W/m², over deleted cells between 08:00 and 16:55 local time only — smaller is better. The fourth card is the station climatology: each station's own mean diurnal cycle, the baseline any spatial method has to beat. The fifth is STMAC without that prior (S0), the ablation of Table I.</div>
-      <div><span class="num">5.</span><b>The sweep</b> shows how each method behaves as blackouts stretch from 30 minutes to 7 days: smoothing a station's own history explodes, the climatology stays flat, and STMAC tracks the climatology while staying below it.</div>
-      <div><span class="num">6.</span><b>The Vision 2030 panel</b> turns those errors into money: what forecast-error penalties would cost a 40+ GW solar fleet per year for each method's error level. The gap to the climatology is small; the gap to the trained Transformer is not.</div>
-      <div><span class="num">7.</span><b>The badges up top</b> are the thesis: no training set, no fitted model, two scalar weights chosen from observed data, solved inside your browser. The deep-learning baseline needs 136,000 trained parameters and 25 epochs to do the same job.</div>
+      <div><span class="num">3.</span><b>The reconstruction chart</b>: amber is what the sensor truly measured; the shaded band is what we deleted; rose is the conventional repair (each station smoothing its own history); green is the station climatology; teal is STMAC; blue and orange (switch them on in the legend) are STMAC without its climatological prior and the GraphTRSS + MDV baseline. The closer a line hugs amber inside the band, the better the repair.</div>
+      <div><span class="num">4.</span><b>The error cards</b> average the mistake, in W/m², over deleted cells between 08:00 and 16:55 local time only — smaller is better. The fourth card is the station climatology: each station's own mean diurnal cycle, the baseline any spatial method has to beat. The fifth is GraphTRSS + MDV, the strongest of the recent graph methods in Table II, run on the same climatological anomalies; the sixth is STMAC without that prior (S0), the ablation of Table I.</div>
+      <div><span class="num">5.</span><b>The sweep</b> shows how each method behaves as blackouts stretch from 30 minutes to 7 days: smoothing a station's own history explodes, the climatology stays flat, and STMAC tracks the climatology while staying below it. GraphTRSS + MDV leads on short and medium gaps and meets STMAC on multi-day gaps, as in Table II.</div>
+      <div><span class="num">6.</span><b>The Vision 2030 panel</b> turns those errors into money with the paper's unit-commitment simulation of the 2025 Saudi system: how much extra fuel and start-ups each method's error costs a year at 19.3 or 40 GW of PV, with oil valued at its export price. The gap to the climatology is about half a million dollars a year at 40 GW; the gap to the trained Transformer is 1.9 million, and 7.0 million with error-sized reserves at 96 USD/bbl.</div>
+      <div><span class="num">7.</span><b>The badges up top</b> are the thesis: no training set, no fitted model, two scalar weights chosen from observed data, solved inside your browser. The deep-learning baseline needs 136,075 trained parameters and 25 epochs to do the same job.</div>
     </div>
   </details>
 
@@ -132,7 +133,8 @@
         <button type="button" class="card stl" data-m="STL" aria-pressed="false"><span class="lab">STMAC · longitude sheaf</span><span class="val" id="cSTL"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
         <button type="button" class="card stt" data-m="STT" aria-pressed="false"><span class="lab">STMAC · trivial sheaf</span><span class="val" id="cSTT"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
         <button type="button" class="card adv" data-m="MDV" aria-pressed="false"><span class="lab">Station climatology (MDV)</span><span class="val" id="cAdv"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
-        <button type="button" class="card s0" data-m="S0" aria-pressed="false"><span class="lab">STMAC without prior (S0) · ablation of Table I</span><span class="val" id="cS0"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
+        <button type="button" class="card wide gt" data-m="GT" aria-pressed="false"><span class="lab">GraphTRSS + MDV · strongest graph baseline of Table II</span><span class="val" id="cGT"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
+        <button type="button" class="card wide s0" data-m="S0" aria-pressed="false"><span class="lab">STMAC without prior (S0) · ablation of Table I</span><span class="val" id="cS0"><span class="n">—</span><span class="un"> W/m²</span></span><span class="more">details ›</span></button>
       </div>
       <div class="insight" id="metricInsight" aria-live="polite"><span class="ins-glow" aria-hidden="true"></span><div class="ins-head"><span class="ins-pill">This scenario</span><button type="button" class="ins-reset" hidden>&times; Back to overview</button></div><div class="ins-body"><p class="ins-hint">Solving the first scenario…</p></div></div>
       <div class="bars-lbl" style="margin-top:14px">Paper benchmark · real 1999 NLR record (Table I, RMSE in W/m²)</div>
@@ -152,11 +154,29 @@
         </tbody>
       </table>
       <p class="ref-cap">Click a row to compare it with the live run. PT: pure temporal; MDV: station climatology; TF: trained Transformer; S0: STMAC without prior; S: STMAC. Teal marks the lowest error in each group; S is lower than MDV and TF in every row (Holm-corrected p &lt; 0.001). Pure temporal wins gaps up to 2 hours and then collapses (71-fold growth); STMAC is lowest from 6 hours on, but its margin over the climatology narrows from 72 W/m² at 30 minutes to 2.6 W/m² at 7 days. Without the prior (S0) the joint solver beats the climatology only at 30 minutes, and the prior accounts for 25 to 43 W/m². On the held-out period STMAC is 22 to 45 W/m² below the Transformer at every length, in 30 of 30 realisations. Split by sky condition, STMAC stays 9.1 to 180.1 W/m² below the climatology on cloudy cells at every block length, against 1.3 to 58.9 W/m² on clear cells, where the margin is not significant beyond 1 day. On the ten shared masks, low-rank completion averages 191.0 W/m² and GRMF spans 198 to 584 W/m², against 145.9 for STMAC.</p>
+      <div class="bars-lbl" style="margin-top:16px">Paper benchmark · recent graph baselines (Table II, ten shared masks, RMSE in W/m²)</div>
+      <table class="ref" id="refTable2">
+        <thead>
+        <tr class="grp"><th></th><th></th><th colspan="3">Raw irradiance</th><th colspan="2" class="ho">On MDV anomalies</th><th class="ho"></th></tr>
+        <tr><th>Block</th><th>MDV</th><th>TV</th><th>GT</th><th>RT</th><th class="ho">TV+M</th><th>GT+M</th><th class="ho">S</th></tr>
+        </thead>
+        <tbody>
+        <tr data-k="0" tabindex="0" role="button" aria-label="Read the 30 min row of Table II"><td>30 min</td><td>161.8</td><td>75.0</td><td>74.1</td><td>78.7</td><td class="ho">76.2</td><td class="win">68.0</td><td class="ho">89.4</td></tr>
+        <tr data-k="1" tabindex="0" role="button" aria-label="Read the 2 h row of Table II"><td>2 h</td><td>163.0</td><td>96.5</td><td>95.7</td><td>103.8</td><td class="ho">96.0</td><td class="win">87.5</td><td class="ho">140.8</td></tr>
+        <tr data-k="2" tabindex="0" role="button" aria-label="Read the 6 h row of Table II"><td>6 h</td><td>159.9</td><td>136.0</td><td>135.3</td><td>139.8</td><td class="ho">127.3</td><td class="win">117.2</td><td class="ho">151.5</td></tr>
+        <tr data-k="3" tabindex="0" role="button" aria-label="Read the 12 h row of Table II"><td>12 h</td><td>161.6</td><td>169.9</td><td>169.3</td><td>175.0</td><td class="ho">152.5</td><td class="win">142.2</td><td class="ho">156.8</td></tr>
+        <tr data-k="4" tabindex="0" role="button" aria-label="Read the 1 day row of Table II"><td>1 day</td><td>159.2</td><td>183.7</td><td>183.0</td><td>188.2</td><td class="ho">162.7</td><td class="win">151.0</td><td class="ho">155.5</td></tr>
+        <tr data-k="5" tabindex="0" role="button" aria-label="Read the 3 days row of Table II"><td>3 days</td><td>163.6</td><td>196.7</td><td>196.2</td><td>201.5</td><td class="ho">174.4</td><td>161.7</td><td class="ho win">161.0</td></tr>
+        <tr data-k="6" tabindex="0" role="button" aria-label="Read the 7 days row of Table II"><td>7 days</td><td>169.2</td><td>199.4</td><td>198.7</td><td>206.0</td><td class="ho">186.2</td><td>173.7</td><td class="ho win">166.3</td></tr>
+        <tr class="mean"><td>Mean</td><td>162.6</td><td>151.0</td><td>150.3</td><td>156.1</td><td class="ho">139.3</td><td class="win">128.8</td><td class="ho">145.9</td></tr>
+        </tbody>
+      </table>
+      <p class="ref-cap">Click a row to compare it with the live run. TV: TVGSR (Qiu et al., 2017); GT: GraphTRSS (Giraldo et al., 2022); RT: RTVGSR (Yamagata et al., 2025); +M: the same method on the anomalies from the MDV prior; S: STMAC. Teal marks the lowest error in each row. On raw irradiance the three graph methods are 11 to 45 W/m² below STMAC up to 6 hours and 12 to 41 W/m² above it from 12 hours on (Holm-corrected p = 0.014 at every length). On the MDV anomalies they improve: TVGSR + MDV is below STMAC up to 12 hours, and GraphTRSS + MDV is below it by 4.5 to 53.3 W/m² up to 1 day (p ≤ 0.027), level at 3 days (p = 0.63) and 7.4 W/m² above at 7 days (p = 0.014). The anomaly formulation carries over to other graph penalties, and a Sobolev penalty on temporal differences beats the temporal and sheaf terms of STMAC up to one day. GraphTRSS + MDV runs live on this page (fifth card); the other columns are quoted.</p>
     </div>
 
     <div class="panel">
       <h2>Block-length sweep — the headline figure, live</h2>
-      <p class="cap">Reproduces the shape of Fig. 1(a), including STMAC without prior (S0): hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: on short gaps a station's own history suffices, so pure temporal wins; once gaps span whole diurnal cycles no smoothness prior can invent them, and the work passes to the diurnal climatology plus the spatial correction that STMAC adds to it.</p>
+      <p class="cap">Reproduces the shape of Fig. 1(a), with STMAC without prior (S0) and GraphTRSS + MDV (Table II) added: hold the outage fraction, sweep block length 30 min → 7 days. Log scale — <b>lower is better</b>. How to read: on short gaps a station's own history suffices, so pure temporal wins; once gaps span whole diurnal cycles no smoothness prior can invent them, and the work passes to the diurnal climatology plus the spatial correction that STMAC adds to it.</p>
       <div class="chart-box" data-h="330"><canvas id="sweepChart" height="330"></canvas><canvas class="ov" id="sweepOv" tabindex="0" role="img" aria-label="Block-length sweep chart. Click a point to read that block length; arrow keys move between points."></canvas></div>
       <div class="series-legend" id="sweepLegend"></div>
       <div class="status" id="sweepStatus"></div>
@@ -164,55 +184,80 @@
     </div>
   </section>
 
-  <section class="panel">
-    <h2>Vision 2030 economic translation</h2>
-    <p class="cap">Eq. (7) of the paper: C<sub>err</sub> = P<sub>deploy</sub> · (R/1000) · ε · H<sub>d</sub> · c. It prices the reconstruction error of each method, not a saving claimed over a broken baseline. Move the market levers; the physics stays fixed.</p>
+  <section class="panel" id="econPanel">
+    <h2>Vision 2030 · what reconstruction error costs the Saudi power system</h2>
+    <p class="cap">Section V-D and Table III of the paper. Saudi Arabia has no imbalance market (a single buyer contracts energy and capacity), so the paper prices each method’s error by simulating unit commitment of the 2025 Saudi system: a day-ahead schedule built on the PV estimate at the sites with outages, corrected in real time on the actual PV, with every barrel of fuel valued at its export price. The first-order penalty model is kept as a live comparison.</p>
     <div class="econ-grid">
       <div>
         <div class="ctl-group">
-          <div class="ctl-label">Deployed solar capacity</div>
-          <div class="slider-row"><input type="range" id="gwSlider" min="20" max="60" step="0.1" value="40"><span class="slider-val" id="gwVal">40 GW</span></div>
+          <div class="ctl-label">Valuation</div>
+          <div class="src-toggle" id="econView">
+            <button type="button" class="chip on" data-view="uc" aria-pressed="true">Unit-commitment simulation · Table III</button>
+            <button type="button" class="chip" data-view="eq" aria-pressed="false">First-order model · live comparison</button>
+          </div>
         </div>
-        <div class="ctl-group">
-          <div class="ctl-label">Imbalance penalty</div>
-          <div class="slider-row"><input type="range" id="penSlider" min="0.5" max="12" step="0.5" value="3"><span class="slider-val" id="penVal">$3/MWh</span></div>
+        <div id="ucCtl">
+          <div class="ctl-group">
+            <div class="ctl-label">Scenario (one column of Table III)</div>
+            <div class="chips" id="ucChips"></div>
+          </div>
         </div>
-        <div class="ctl-group">
-          <div class="ctl-label">Sensor outage fraction</div>
-          <div class="slider-row"><input type="range" id="outSlider" min="5" max="15" step="1" value="10"><span class="slider-val" id="outVal">10%</span></div>
-        </div>
-        <div class="ctl-group">
-          <div class="ctl-label">RMSE source</div>
-          <div class="src-toggle">
-            <button class="chip" id="srcPaper">Paper Table II (full year, all block lengths)</button>
-            <button class="chip" id="srcCloudy">Paper Table II · cloud-dominated stress year</button>
-            <button class="chip on" id="srcLive">This live run (updates with every simulation)</button>
+        <div id="eqCtl" hidden>
+          <div class="ctl-group">
+            <div class="ctl-label">PV capacity</div>
+            <div class="slider-row"><input type="range" id="gwSlider" min="10" max="60" step="0.1" value="40" aria-label="PV capacity"><span class="slider-val" id="gwVal">40 GW</span></div>
+          </div>
+          <div class="ctl-group">
+            <div class="ctl-label">Imbalance penalty (paper: 3 to 10 USD/MWh)</div>
+            <div class="slider-row"><input type="range" id="penSlider" min="0.5" max="12" step="0.5" value="3" aria-label="Imbalance penalty"><span class="slider-val" id="penVal">$3/MWh</span></div>
+          </div>
+          <div class="ctl-group">
+            <div class="ctl-label">Sensor outage fraction</div>
+            <div class="slider-row"><input type="range" id="outSlider" min="5" max="15" step="1" value="10" aria-label="Sensor outage fraction"><span class="slider-val" id="outVal">10%</span></div>
+          </div>
+          <div class="ctl-group">
+            <div class="ctl-label">RMSE source</div>
+            <div class="src-toggle">
+              <button type="button" class="chip" id="srcPaper">Paper means over the seven block lengths</button>
+              <button type="button" class="chip on" id="srcLive">This live run (updates with every simulation)</button>
+            </div>
           </div>
         </div>
         <div class="headline-save">
           <div class="num" id="saveNum">$—M</div>
-          <div class="lbl">annual cost of STMAC's reconstruction error under Eq. (7)</div>
+          <div class="lbl" id="saveLbl">annual cost of STMAC’s reconstruction error</div>
         </div>
         <div class="interp" id="econInterp">—</div>
       </div>
       <div>
-        <div class="bars-lbl">Annual balancing cost by method</div>
-        <div class="chart-box" data-h="270"><canvas id="costChart" height="270"></canvas><canvas class="ov" id="costOv" tabindex="0" role="img" aria-label="Annual balancing cost by method. Click a bar to read it; arrow keys move between bars."></canvas></div>
-        <div class="insight" id="costInsight" aria-live="polite"><span class="ins-glow" aria-hidden="true"></span><div class="ins-head"><span class="ins-pill">Cost bars</span><button type="button" class="ins-reset" hidden>&times; Back to overview</button></div><div class="ins-body"><p class="ins-hint">Click a bar to see what it costs, how far it sits from STMAC, and at which penalty the gap passes $1M a year.</p></div></div>
+        <div class="bars-lbl" id="costLbl">Annual cost of the PV-estimate error by method</div>
+        <div class="chart-box" data-h="318"><canvas id="costChart" height="318"></canvas><canvas class="ov" id="costOv" tabindex="0" role="img" aria-label="Annual cost of the PV-estimate error by method. Click a bar to read it; arrow keys move between bars."></canvas></div>
+        <div class="insight" id="costInsight" aria-live="polite"><span class="ins-glow" aria-hidden="true"></span><div class="ins-head"><span class="ins-pill">Cost bars</span><button type="button" class="ins-reset" hidden>&times; Back to overview</button></div><div class="ins-body"><p class="ins-hint">Click a bar to see what it costs and how far it sits from STMAC.</p></div></div>
       </div>
       <div>
-        <div class="bars-lbl">This simulation, in plain words (updates with every run)</div>
+        <div class="bars-lbl">This live run, in plain words (updates with every run)</div>
         <ul class="ref-list" id="econLive"><li>Run a scenario to see the live reading.</li></ul>
-        <div class="bars-lbl" style="margin-top:16px">What the paper reports (Table II: full year, 20 masks, averaged over the seven block lengths)</div>
-        <ul class="ref-list">
-          <li>The pure-temporal bar is a reference, not an operating baseline. Averaged over the seven block lengths its RMSE is 1,209 W/m², and at a 3-day gap alone it reaches 1,904 W/m², beyond the physical range of sunlight; clipping its output to [0, 1400] W/m² brings that to 658.</li>
-          <li>The honest comparisons are the other three bars. Against the trained Transformer, STMAC saves $3.3M to $14.6M per year across the paper's three scenarios (40 GW at $3/MWh, 52.7 GW at $5/MWh, 52.7 GW at $10/MWh). The Transformer is the only method with a training period and the full-year figures include it, which can only lower its error, so this margin is conservative. On the held-out window, where all three methods fall by nearly the same factor (0.59, 0.59, 0.61), the margin is $1.8M to $7.9M over the Transformer and $0.4M to $1.7M over the climatology.</li>
-          <li>Against the station climatology, STMAC saves $0.9M to $3.9M per year, because averaged over the sweep the two differ by 16.8 W/m². Restricted to cloudy cells the difference is 46.5 W/m² and the saving becomes $2.4M to $10.7M, a cloud-dominated stress year rather than a share of the all-cell figure; at 3-day gaps alone it narrows to 2.9 W/m² and $0.2M to $0.7M. Use the source toggle above to move between the three.</li>
-          <li>Replacing the RMSE in Eq. (7) by the mean absolute error, deadband (5%, 10%), tiered or asymmetric settlement, evaluated on the residuals of five masks at the 3-day block, lowers the cost of STMAC by 38% to 73% and keeps it at or below the climatology in all six structures. A tiered rate of twice the base above a 15% deviation raises it by 20%, so Eq. (7) is a first-order estimate, not a bound.</li>
-          <li>Eq. (7) prices one narrow stream, so all of these figures are a lower bound on operational value. Reserve sizing, curtailment avoidance, the financing risk premium on resource-data quality, and the observability of newly commissioned stations that have no history for a learned model are left unpriced.</li>
-          <li>The value grows with network density. On the 2019 satellite field the margin over the climatology, priced at 52.7 GW and $10/MWh, rises from $3.5M to $5.0M per year between 11 and 50 sites, so an added monitoring site is worth about $69k per year at first and about $21k per year near 50 sites. That planning curve is still to be re-measured on K.A.CARE ground data.</li>
-        </ul>
       </div>
+    </div>
+    <div class="paper-notes">
+      <div class="bars-lbl">What the paper reports (Section VI-F, Table III)</div>
+      <ul class="ref-list">
+        <li><b>The model.</b> An hourly 2025 load estimated from public statistics (chart below), four thermal clusters totalling 86 GW (combined-cycle gas 26 GW, open-cycle gas 20 GW, oil-fired steam 33 GW, oil-fired gas turbines 7 GW), a day-ahead schedule solved as a mixed-integer linear program with spinning reserve of 3% of load plus 5% of PV, and real-time redispatch on the actual PV in which combined-cycle and steam commitments stay fixed and gas turbines may start. PV is split equally over the 11 sites (capacity factor 0.21); sites with an outage use the reconstructed irradiance. Oil burned for power is oil not exported, so all fuel is valued at export parity: 69 USD/bbl, the 2025 Brent average (11.9 USD/MMBtu).</li>
+        <li><b>At 40 GW.</b> No case sheds load; the cost is extra fuel and start-ups when a schedule built on the estimate is corrected in real time. Under the 3+5 rule the error of STMAC costs 2.0 million USD per year, 1.9 million less than the Transformer (0.8 to 3.4 million across block lengths) and 0.5 million less than the climatology, and burns 25.7 thousand barrels of oil equivalent per year against 118 thousand for the Transformer. GraphTRSS + MDV costs 0.6 million less than STMAC, in line with its RMSE; the ranking holds in two further load realisations (1-day blocks).</li>
+        <li><b>From 19.3 to 40 GW</b> the costs rise 5.7 to 7.4 times, faster than capacity: the error volume roughly doubles and the cost per MWh of error also rises (0.77 to 2.68 USD for STMAC).</li>
+        <li><b>Reserves and oil price.</b> Reserves sized to each method’s error roughly double the costs. At the EIA 2026 outlook of 96 USD/bbl the margin of STMAC over the Transformer is 4.4 million USD a year under the 3+5 rule and 7.0 million with error-sized reserves (0.7 and 1.1 million over the climatology).</li>
+        <li><b>Where the cost comes from.</b> Over-estimating PV under-commits slow units, so gas turbines 18 to 22 efficiency points below the combined cycles start in real time; under-estimating leaves slow units near minimum load or displaces PV.</li>
+        <li><b>First-order model.</b> Pricing the RMSE at imbalance penalties of 3 to 10 USD/MWh gives 7.7 to 25.6 million USD for STMAC at 40 GW, 4 to 13 times the simulated value: per MWh of absolute PV-estimate error the simulated cost has a median of 1.26 USD (0.33 to 3.50 under the 3+5 rule).</li>
+        <li><b>Validation and limits.</b> With 12.3 GW of renewables and perfect information the model generates 406 TWh of thermal energy (404 TWh implied by Saudi Energy’s report) at 41.7% mean efficiency (38.15% reported) and burns 770 thousand b/d of liquid fuel (991 thousand reported), so it likely understates the fuel cost of errors. It is a single-node fleet with an assumed technology split, PV at the 11 historical sites and a 10% outage fraction, without network constraints, battery storage or financing premia.</li>
+      </ul>
+    </div>
+    <div class="load-row">
+      <div>
+        <div class="bars-lbl">Simulation input · estimated 2025 hourly national load (daily range and mean)</div>
+        <div class="chart-box" data-h="250"><canvas id="loadChart" height="250"></canvas><canvas class="ov" id="loadOv" tabindex="0" role="img" aria-label="Estimated 2025 hourly load. Hover for a day, click to read it; arrow keys move between days."></canvas></div>
+        <p class="cap" style="margin-top:8px">No national hourly load is published, so the paper estimates it by hierarchical moment matching: monthly regional mean, maximum and minimum load from ECRA (2015 to 2019) set the seasonal shape and daily amplitude, 2025 regional sales weight the regions, typical daily curves and a 10 to 15% Friday reduction shape each day, and a log-normal AR(1) factor adds weather variation, scaled to the 2025 peak of 77.08 GW and calibrated to 429.1 TWh. The weekday calendar is that of 1999, so each day lines up with the irradiance it is simulated against.</p>
+      </div>
+      <div class="insight" id="loadInsight" aria-live="polite"><span class="ins-glow" aria-hidden="true"></span><div class="ins-head"><span class="ins-pill">Load overview</span><button type="button" class="ins-reset" hidden>&times; Back to overview</button></div><div class="ins-body"><p class="ins-hint">Loading the load estimate…</p></div></div>
     </div>
   </section>
 
@@ -229,15 +274,19 @@
     <div><span class="num">·</span><b>Sheaf, longitude sheaf</b> — a rule for how neighbouring stations are allowed to inform each other. The longitude sheaf first shifts every station into its own solar time, so that noon at one station is compared with noon at its neighbour. The shift is δ = (λ − λ̄)/(15°/h), measured from the network-mean longitude λ̄.</div>
     <div><span class="num">·</span><b>STMAC</b> (Spatial-Temporal Maximum Accuracy Computing) — the paper's method: take the departure from the climatology, ask that it be smooth in time and consistent with neighbours in solar time, and solve that as one sparse linear system. No training set, no fitted model.</div>
     <div><span class="num">·</span><b>S0</b> — STMAC without its prior (C = 0, g = 0, r = 10), the ablation of Table I. The gap between S0 and STMAC is what the station climatology contributes.</div>
+    <div><span class="num">·</span><b>GraphTRSS + MDV, TVGSR, RTVGSR</b> — recent time-varying graph signal recovery methods (2017 to 2025) that the paper compares against in Table II. They penalise how much neighbouring stations disagree in their changes from one time step to the next, using the ordinary graph with no solar-time shift. Applied to the same departures from the climatology (“+ MDV”), GraphTRSS is more accurate than STMAC for gaps up to one day; STMAC is level at 3 days and ahead at 7 days. GraphTRSS + MDV runs live on this page.</div>
+    <div><span class="num">·</span><b>Unit commitment</b> — the daily decision of which power plants to switch on, made a day ahead on a forecast of load and solar output. When the solar estimate is wrong, fast but inefficient gas turbines start in real time; the paper prices each method’s error as that extra fuel and start-up cost, with oil valued at the price it would fetch as an export.</div>
     <div><span class="num">·</span><b>r and g</b> — the only two knobs, the ratios r = αt/αs and g = γ/αs of Eq. (5). r says how much temporal smoothness counts relative to neighbour agreement; g says how strongly long gaps are pulled back toward the climatology. The paper selects them once: for each outage length it hides 5% of the observed cells in blocks of that length and keeps the pair with the lowest error averaged over the seven lengths.</div>
   </div>
 </section>
 <footer><div class="wrap">
-  <div class="cite">A. Barata, “Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
+  <div class="cite">A. Barata, Fathurrahman, and K. Hasan, “Training-Free Solar Resource Reconstruction via Cellular Sheaves: A Spatial-Temporal
   Framework for Saudi Vision 2030,” IEEE SUSTAIN 2026, KFUPM, Saudi Arabia, 2026.</div>
   <div>Everything on this page — the diurnal climatology, the sheaf-Laplacian spatial coupling, the longitude
-  time-shift restriction maps and the exact banded-Cholesky solve of the sparse space-time system — runs client-side
-  in JavaScript and implements the same solver as the Python reference.
+  time-shift restriction maps and the exact banded-Cholesky solve of the sparse space-time system, as well as the
+  GraphTRSS + MDV baseline — runs client-side in JavaScript and implements the same solvers as the Python reference.
+  The unit-commitment figures and the other baselines are quoted from the paper. The authors thank NREA/NLR for the
+  Saudi historical irradiance dataset.
   That is the point: a method with no training loop can live anywhere, including inside this page.
   Supports UN SDG 7 · 9 · 13. Source code and the complete analysis notebooks: <a href="https://github.com/barata90/stmac-demo">github.com/barata90/stmac-demo</a>.</div>
 </div></footer>

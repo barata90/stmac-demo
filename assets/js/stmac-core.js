@@ -45,6 +45,10 @@ const DAY_CS=20;                  /* clear-sky GHI above this counts as daylight
 const LON_MEAN=STATIONS.reduce((a,s)=>a+s.lon,0)/STATIONS.length;
 /* ablation S0 of Table I: the joint solver without prior (C = 0, g = 0, r = 10) */
 const S0_R=10, S0_G=0;
+/* GraphTRSS + MDV of Table II (Giraldo et al., 2022, on the MDV anomalies): Sobolev
+   smoothness (L + eps I)^beta of first temporal differences. Weights chosen by the same
+   block cross-validation as STMAC (notebook E14): nu = 1, eps = 1, beta = 1. */
+const GT_NU=1, GT_EPS=1;
 
 function setGrid(days,doy0,startUTC){DAYS=days;T=SPD*DAYS;DOY0=doy0;START_UTC=startUTC;}
 function grid(){return {DAYS,T,DOY0,START_UTC};}
@@ -319,6 +323,50 @@ function stmacJoint(Z,M,Lg,r,g,useShift,halfWin,noPrior){
   return {R:Rec,C:C,n:n,bw:bw};
 }
 
+/* ---- GraphTRSS with beta = 1 on departures from a prior C (TVGSR when eps = 0):
+   min_A 1/2 ||M o (A - (U - C))||^2 + nu/2 tr((A D_h)' (L_g + eps I) (A D_h)),  U_hat = A + C.
+   Observed cells are fitted, not fixed, so every cell is an unknown. With the vector index
+   t*N + v the normal matrix diag(M) + nu (D_h D_h' kron (L_g + eps I)) is banded with
+   half-bandwidth 2N - 1, and one banded Cholesky factorisation gives the exact minimiser
+   (the notebooks use LAPACK's banded solver on the same system). ---- */
+let SOB_AB=null; /* band storage reused between solves (about 39 MB for the 70-day window) */
+function sobolevTV(Z,M,Lg,nu,eps,C){
+  const n=N*T,bw=2*N-1,W=bw+1;
+  const S=[];for(let v=0;v<N;v++){const s=new Float64Array(N);for(let w=0;w<N;w++)s[w]=Lg[v][w]+(v===w?eps:0);S.push(s);}
+  if(!SOB_AB||SOB_AB.length!==n*W)SOB_AB=new Float64Array(n*W);else SOB_AB.fill(0);
+  const AB=SOB_AB,x=new Float64Array(n);
+  /* assemble the lower band (row k, column k - d stored at AB[k*W + d]) and the right-hand side */
+  for(let t=0;t<T;t++){
+    const att=(t===0||t===T-1)?1:2;
+    for(let v=0;v<N;v++){
+      const k=t*N+v,kW=k*W,obs=M[v][t]>0.5;
+      AB[kW]=(obs?1:0)+nu*att*S[v][v]+1e-10;
+      for(let w=0;w<v;w++)if(S[v][w]!==0)AB[kW+(v-w)]=nu*att*S[v][w];
+      if(t>0)for(let w=0;w<N;w++)if(S[v][w]!==0)AB[kW+(N+v-w)]=-nu*S[v][w];
+      x[k]=obs?Z[v][t]-C[v][t]:0;
+    }
+  }
+  /* banded Cholesky in place, then the two triangular solves (x holds b, then y, then x) */
+  for(let j=0;j<n;j++){
+    const jW=j*W,kmin=Math.max(0,j-bw);
+    let s=AB[jW];
+    for(let k=kmin;k<j;k++){const l=AB[jW+(j-k)];s-=l*l;}
+    const d=Math.sqrt(s>0?s:1e-12);AB[jW]=d;
+    const imax=Math.min(n-1,j+bw);
+    for(let i=j+1;i<=imax;i++){
+      const iW=i*W;let s2=AB[iW+(i-j)];
+      const k0=Math.max(kmin,i-bw);
+      for(let k=k0;k<j;k++)s2-=AB[iW+(i-k)]*AB[jW+(j-k)];
+      AB[iW+(i-j)]=s2/d;
+    }
+  }
+  for(let i=0;i<n;i++){const iW=i*W;let s=x[i];const k0=Math.max(0,i-bw);for(let k=k0;k<i;k++)s-=AB[iW+(i-k)]*x[k];x[i]=s/AB[iW];}
+  for(let i=n-1;i>=0;i--){let s=x[i];const imax=Math.min(n-1,i+bw);for(let k=i+1;k<=imax;k++)s-=AB[k*W+(k-i)]*x[k];x[i]=s/AB[i*W];}
+  const Rec=[];
+  for(let v=0;v<N;v++){const o=new Float64Array(T);for(let t=0;t<T;t++)o[t]=x[t*N+v]+C[v][t];Rec.push(o);}
+  return {R:Rec,n,bw};
+}
+
 function rmseMasked(truth,rec,M){
   const E=evalMask();let s=0,c=0;
   for(let v=0;v<N;v++)for(let i=0;i<T;i++)
@@ -419,13 +467,14 @@ function createEngine(loadRealPayload){
     t=now();const stt=stmacJoint(U,M,G.Lg,p.r,p.g,false,MDV_WIN);tm.stt=now()-t;
     t=now();const mdv=climFill(U,M,stl.C);tm.mdv=now()-t;
     t=now();const s0=stmacJoint(U,M,G.Lg,S0_R,S0_G,true,MDV_WIN,true);tm.s0=now()-t;
+    t=now();const gt=sobolevTV(U,M,G.Lg,GT_NU,GT_EPS,stl.C);tm.gt=now()-t;
     t=now();
-    const stats={PT:errorStats(U,pt,M),MDV:errorStats(U,mdv,M),STL:errorStats(U,stl.R,M),STT:errorStats(U,stt.R,M),S0:errorStats(U,s0.R,M)};
+    const stats={PT:errorStats(U,pt,M),MDV:errorStats(U,mdv,M),STL:errorStats(U,stl.R,M),STT:errorStats(U,stt.R,M),S0:errorStats(U,s0.R,M),GT:errorStats(U,gt.R,M)};
     tm.stats=now()-t;tm.total=now()-t00;
-    const out={dsKey:ds.key,params:p,effFrac:frac,nb,n:stl.n,bw:stl.bw,ms:tm.stl,tm,
-      rPT:rmseMasked(U,pt,M),rMDV:rmseMasked(U,mdv,M),rSTL:rmseMasked(U,stl.R,M),rSTT:rmseMasked(U,stt.R,M),rS0:rmseMasked(U,s0.R,M),
-      stats,M:packMask(M),PT:pack(pt),MDV:pack(mdv),STL:pack(stl.R),STT:pack(stt.R),S0:pack(s0.R)};
-    out.transfer=[out.M.buffer,out.PT.buffer,out.MDV.buffer,out.STL.buffer,out.STT.buffer,out.S0.buffer];
+    const out={dsKey:ds.key,params:p,effFrac:frac,nb,n:stl.n,bw:stl.bw,ms:tm.stl,tm,gtN:gt.n,gtBw:gt.bw,
+      rPT:rmseMasked(U,pt,M),rMDV:rmseMasked(U,mdv,M),rSTL:rmseMasked(U,stl.R,M),rSTT:rmseMasked(U,stt.R,M),rS0:rmseMasked(U,s0.R,M),rGT:rmseMasked(U,gt.R,M),
+      stats,M:packMask(M),PT:pack(pt),MDV:pack(mdv),STL:pack(stl.R),STT:pack(stt.R),S0:pack(s0.R),GT:pack(gt.R)};
+    out.transfer=[out.M.buffer,out.PT.buffer,out.MDV.buffer,out.STL.buffer,out.STT.buffer,out.S0.buffer,out.GT.buffer];
     return out;
   }
   function sweepBlock(p){
@@ -438,7 +487,8 @@ function createEngine(loadRealPayload){
     const sT=rmseMasked(U,stmacJoint(U,M,G.Lg,p.r,p.g,false,MDV_WIN).R,M);
     const md=rmseMasked(U,climFill(U,M,jl.C),M);
     const s0=rmseMasked(U,stmacJoint(U,M,G.Lg,S0_R,S0_G,true,MDV_WIN,true).R,M);
-    return {k:p.k,lab:bl.lab,pt,mdv:md,sl,st:sT,s0,frac,ms:now()-t0};
+    const gt=rmseMasked(U,sobolevTV(U,M,G.Lg,GT_NU,GT_EPS,jl.C).R,M);
+    return {k:p.k,lab:bl.lab,pt,mdv:md,sl,st:sT,s0,gt,frac,ms:now()-t0};
   }
   const ops={load,scenario,sweepBlock};
   return {
@@ -451,10 +501,10 @@ function createEngine(loadRealPayload){
 }
 
 root.STMACCore={
-  STATIONS,N,SPD,TZ,SYN,REALMETA,BLOCKS,AT,R_RATIO,RIDGE,MDV_WIN,GRAPH_K,GRAPH_SIGMA,DAY_CS,EVAL_H0,EVAL_H1,LON_MEAN,S0_R,S0_G,
+  STATIONS,N,SPD,TZ,SYN,REALMETA,BLOCKS,AT,R_RATIO,RIDGE,MDV_WIN,GRAPH_K,GRAPH_SIGMA,DAY_CS,EVAL_H0,EVAL_H1,LON_MEAN,S0_R,S0_G,GT_NU,GT_EPS,
   lonShiftMin,evalHour,evalMask,
   setGrid,grid,lonShift,mulberry32,clearSky,hav,genData,computeCS,decodeReal,distMatrix,buildGraph,
-  tempSolve,shiftInt,buildBlockMask,pureTemporal,mdvPrior,climFill,stmacJoint,rmseMasked,errorStats,
+  tempSolve,shiftInt,buildBlockMask,pureTemporal,mdvPrior,climFill,stmacJoint,sobolevTV,rmseMasked,errorStats,
   pairCorrelations,createEngine
 };
 })(typeof self!=='undefined'?self:this);

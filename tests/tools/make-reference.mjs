@@ -22,7 +22,7 @@ const PATCHES = [
   ['Section III-B: the longitude-sheaf shift is measured from the network-mean longitude (the single-file page used the UTC+3 meridian, 45 E; relative shifts between stations are the same, so reconstructions do not change)',
     'const del=STATIONS.map(s=>Math.round((s.lon/15-TZ)*12));',
     'const LM=STATIONS.reduce((a,s)=>a+s.lon,0)/STATIONS.length;const del=STATIONS.map(s=>Math.round((s.lon-LM)/15*12));'],
-  ['Section V-A and the notebooks\' DAYTIME mask: RMSE over unobserved cells at clock hours 8 to 16 (the single-file page used clear-sky GHI > 20 W/m2)',
+  ['Section V-B and the notebooks\' DAYTIME mask: RMSE over unobserved cells at clock hours 8 to 16 (the single-file page used clear-sky GHI > 20 W/m2)',
     'if(!M[v][i]&&CS[v][i]>20){const d=rec[v][i]-truth[v][i];s+=d*d;c++;}',
     '{const h=Math.floor((i%SPD)*5/60);if(!M[v][i]&&h>=8&&h<=16){const d=rec[v][i]-truth[v][i];s+=d*d;c++;}}'],
   ['Sections IV-B and V-C: optional zero prior, for the ablation S0 (C = 0, g = 0, r = 10)',
