@@ -12,8 +12,7 @@ permissions:
 jobs:
   tests:
     name: Solver and UI tests
-    # pinned: ubuntu-latest now resolves to Ubuntu 26.04, where Playwright 1.56.1 cannot install Chromium
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
